@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<site>
+   <feature url="features/org.scala-ide.sdt.sbtconsole.feature_0.0.0.jar" id="org.scala-ide.sdt.sbtconsole.feature" version="0.0.0">
+      <category name="org.scala-ide.sdt.sbtconsole"/>
+   </feature>
+   <feature url="features/org.scala-ide.sdt.sbtconsole.source.feature_0.0.0.jar" id="org.scala-ide.sdt.sbtconsole.source.feature" version="0.0.0">
+      <category name="org.scala-ide.sdt.sbtconsole-source"/>
+   </feature>
+   <category-def name="org.scala-ide.sdt.sbtconsole" label="SBT Console"/>
+   <category-def name="org.scala-ide.sdt.sbtconsole-source" label="SBT Console Source"/>
+</site>
