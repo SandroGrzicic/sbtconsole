@@ -1,34 +1,47 @@
 package scala.tools.eclipse.sbtconsole.console
 
-import org.eclipse.ui.internal.console.IOConsolePage
-import org.eclipse.ui.console.IConsoleView
-import org.eclipse.ui.console.TextConsole
-import org.eclipse.swt.widgets.Composite
-import org.eclipse.swt.events.TraverseListener
-import org.eclipse.swt.events.TraverseEvent
 import scala.tools.eclipse.logging.HasLogger
-import org.eclipse.swt.SWT
-import org.eclipse.swt.events.KeyListener
+
+import org.eclipse.jface.action.IToolBarManager
+import org.eclipse.swt.widgets.Composite
+import org.eclipse.ui.console.IConsoleConstants
+import org.eclipse.ui.console.IConsoleView
 import org.eclipse.ui.console.IOConsole
-import org.eclipse.swt.events.KeyEvent
-import org.eclipse.jface.text.ITextInputListener
-import org.eclipse.jface.text.IDocument
-import org.eclipse.jface.text.ITextListener
-import org.eclipse.jface.text.TextEvent
+import org.eclipse.ui.internal.console.IOConsolePage
 
 /**
- * An IOConsolePage with support for a custom TraverseListener.
+ * An IOConsolePage with 
  */
-class ShellConsolePage(console: IOConsole, view: IConsoleView)
+class ShellConsolePage(console: IOConsole, view: IConsoleView, onTermination: () => Unit)
     extends IOConsolePage(console, view)
     with HasLogger {
 
+  private var terminateAction: TerminateAction = _
+    
   override def createControl(parent: Composite) {
     super.createControl(parent)
     val control = getControl
-    val listener = new SeriousKeyListener(console, ShellConsolePage.this)
+    val listener = new ShellConsoleKeyListener(console, ShellConsolePage.this)
     control.addTraverseListener(listener)
     control.addKeyListener(listener)
   }
+
+  override protected def createActions() {
+    super.createActions()
+    terminateAction = new TerminateAction(this)
+    
+  }
+  override protected def configureToolBar(mgr: IToolBarManager) {
+    mgr.appendToGroup(IConsoleConstants.OUTPUT_GROUP, terminateAction)
+    super.configureToolBar(mgr)
+  }
   
+  override def dispose() {
+    if (terminateAction != null) {
+      terminateAction = null
+    }
+    super.dispose()
+    onTermination()
+  }
+
 }

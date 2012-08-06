@@ -12,7 +12,8 @@ import scala.tools.eclipse.ScalaProject
 import scala.tools.eclipse.logging.HasLogger
 import scala.tools.eclipse.sbtconsole.SbtBuilder
 
-/** Show the Sbt console for the current project.
+/** 
+ * Show the SBT console for the current project.
  */
 class ShowSbtConsoleAction extends IWorkbenchWindowActionDelegate with HasLogger {
 

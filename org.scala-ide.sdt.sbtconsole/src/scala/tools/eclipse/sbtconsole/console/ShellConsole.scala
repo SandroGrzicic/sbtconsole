@@ -15,18 +15,26 @@ class ShellConsole(
   name: String, 
   consoleType: String, 
   imageDescriptor: ImageDescriptor, 
-  autoLifecycle: Boolean)
+  autoLifecycle: Boolean,
+  onTermination: () => Unit)
     extends IOConsole(name, consoleType, imageDescriptor, autoLifecycle)
     with HasLogger {
-
-  def this(name: String, imageDescriptor: ImageDescriptor, autoLifecycle: Boolean) { this(name, null, imageDescriptor, autoLifecycle) }
-
-  def this(name: String, imageDescriptor: ImageDescriptor) { this(name, imageDescriptor, true) }
-
-  def this(name: String) { this(name, null) }
-
-  override def createPage(view: IConsoleView): IPageBookViewPage = {
-    new ShellConsolePage(ShellConsole.this, view)
+  
+  def this(name: String, imageDescriptor: ImageDescriptor, autoLifecycle: Boolean, onTermination: () => Unit) { 
+    this(name, null, imageDescriptor, autoLifecycle, onTermination) 
   }
 
+  def this(name: String, imageDescriptor: ImageDescriptor, onTermination: () => Unit) { 
+    this(name, imageDescriptor, true, onTermination) 
+  }
+
+  def this(name: String, onTermination: () => Unit) { this(name, null, onTermination) }
+
+  override def createPage(view: IConsoleView): IPageBookViewPage = {
+    new ShellConsolePage(ShellConsole.this, view, onTermination)
+  }
+  
+  override protected def dispose() {
+    
+  }
 }

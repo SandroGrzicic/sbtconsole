@@ -12,7 +12,7 @@ import org.eclipse.jface.text.BadLocationException
 import org.eclipse.swt.widgets.Display
 import scala.tools.eclipse.util.SWTUtils
 
-class SeriousKeyListener(console: IOConsole, page: IOConsolePage)
+class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
     extends TraverseListener
     with KeyListener
     with HasLogger {
@@ -84,7 +84,7 @@ class SeriousKeyListener(console: IOConsole, page: IOConsolePage)
       history :+= userInput
       historyLine = history.length
     } catch {
-      case e: BadLocationException => eclipseLog.info("Bad location while fetching current line", e)
+      case e: BadLocationException => //eclipseLog.info("Bad location while fetching current line", e)
     }
   }
   

@@ -11,31 +11,31 @@ import org.eclipse.jface.viewers.IStructuredSelection
 import org.eclipse.jdt.core._
 
 /**
- * Actions which runs the SBT Console. 
+ * Action which runs the SBT Console.
  */
 class SbtConsoleAction extends IObjectActionDelegate {
-  var target : Option[IJavaElement] = None
+  var target: Option[IJavaElement] = None
   val SBT_CONSOLE_LAUNCH_ID = "scala.sbtconsole"
-  override def setActivePart(action : IAction, targetpart : IWorkbenchPart) = {}
-  
+  override def setActivePart(action: IAction, targetpart: IWorkbenchPart) = {}
+
   override def run(action: IAction) = {
-    if(target.isEmpty) {
+    if (target.isEmpty) {
       val shell = new Shell
       MessageDialog.openInformation(shell, "Scala Development Tools", "SBT Console could not be created")
     }
-    
+
     val project = target.get.getJavaProject.getProject
-    
+
     Factory.openConsoleInProjectFromTarget(project, target)
   }
-  
+
   override def selectionChanged(action: IAction, select: ISelection) = {
     if (select.isInstanceOf[IStructuredSelection]) {
       (select.asInstanceOf[IStructuredSelection]).getFirstElement match {
-        case item : IJavaProject =>
+        case item: IJavaProject =>
           this.target = Some(item)
           action.setText("Show/hide a SBT console for " + item.getElementName)
-        case item : IPackageFragment =>
+        case item: IPackageFragment =>
           this.target = Some(item)
           action.setText("Show/hide a SBT console for " + item.getElementName)
         case _ =>

@@ -11,7 +11,7 @@ import scala.tools.nsc.interpreter.Results.Result
 import org.eclipse.ui.PlatformUI
 import org.eclipse.ui.IPartListener2
 import scala.tools.eclipse.sbtconsole.editor.SbtEditorListener
-
+import org.eclipse.ui.IWorkbenchPage
 
 object SbtConsolePlugin {
   @volatile var plugin: SbtConsolePlugin = _
@@ -19,26 +19,40 @@ object SbtConsolePlugin {
 
 class SbtConsolePlugin extends AbstractUIPlugin with IStartup with HasLogger {
 
+  lazy val sbtEditorListener = new SbtEditorListener()
+
   override def start(context: BundleContext) {
     super.start(context)
     SbtConsolePlugin.plugin = this
-    logger.debug("SbtConsolePlugin startup") 
   }
 
   /** Adds a PartListener to the active workbench window. */
   def earlyStartup() {
-    logger.debug("SbtConsolePlugin early startup") 
-    val workbench = PlatformUI.getWorkbench()
-    workbench.getDisplay.asyncExec(new Runnable() {
-       def run() {
-         val window = workbench.getActiveWorkbenchWindow
-         if (window != null) {
-           logger.debug("SbtConsolePlugin part listener added")
-           window.getActivePage.addPartListener(new SbtEditorListener())
-         }
-       }
-     });
+    PlatformUI.getWorkbench().getDisplay.asyncExec(new Runnable() {
+      def run() {
+        activePage foreach { page =>
+          page.addPartListener(sbtEditorListener)
+        }
+      }
+    })
+  }
 
+  override def stop(context: BundleContext) {
+    super.stop(context)
+    activePage foreach { page =>
+      sbtEditorListener.stop()
+      page.removePartListener(sbtEditorListener)
+    }
+  }
+  
+  def activePage: Option[IWorkbenchPage] = {
+    PlatformUI.getWorkbench() match {
+      case null => None
+      case workbench => workbench.getActiveWorkbenchWindow match {
+        case null   => None
+        case window => Some(window.getActivePage)
+      }
+    }
   }
 
   def pluginId = "org.scala-ide.sdt.sbtconsole"

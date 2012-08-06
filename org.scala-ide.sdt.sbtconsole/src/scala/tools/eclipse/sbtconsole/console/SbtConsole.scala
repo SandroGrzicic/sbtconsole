@@ -19,8 +19,8 @@ import org.eclipse.ui.console.PatternMatchEvent
 import org.eclipse.ui.console.TextConsole
 import org.eclipse.ui.ide.IDE
 
-class SbtConsole(name: String, imgDescriptor: ImageDescriptor = null)
-    extends ShellConsole(name, imgDescriptor)
+class SbtConsole(name: String, imgDescriptor: ImageDescriptor = null, onTermination: () => Unit)
+    extends ShellConsole(name, imgDescriptor, onTermination)
     with HasLogger {
 
   val partitioner = new SbtPartitioner(this)

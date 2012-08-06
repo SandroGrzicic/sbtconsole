@@ -19,6 +19,8 @@ import org.eclipse.swt.widgets.Display
 import org.eclipse.ui.console.ConsolePlugin
 import org.eclipse.ui.console.IConsole
 import org.eclipse.ui.dialogs.PreferencesUtil
+import org.eclipse.jface.util.IPropertyChangeListener
+import org.eclipse.jface.util.PropertyChangeEvent
 
 
 /**
@@ -31,7 +33,7 @@ class SbtBuilder(project: ScalaProject) extends HasLogger {
   @volatile private var shuttingDown = false
 
   private var sbtProcess: Process = _
-  
+
   private val consoleName = "Sbt - %s".format(project.underlying.getName)
 
   private val consoleManager = ConsolePlugin.getDefault().getConsoleManager()
@@ -54,10 +56,11 @@ class SbtBuilder(project: ScalaProject) extends HasLogger {
    * for error messages.
    */
   private def createConsole(): SbtConsole = {
-    
-    val console = new SbtConsole(consoleName, null)
-    console.setConsoleWidth(140)
 
+    val onConsoleTermination = () => dispose()
+    val console = new SbtConsole(consoleName, null, onConsoleTermination)
+    console.setConsoleWidth(140)
+    
     consoleManager.addConsoles(Array[IConsole](console))
     console
   }
