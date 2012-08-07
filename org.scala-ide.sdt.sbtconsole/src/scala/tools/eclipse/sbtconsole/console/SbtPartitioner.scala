@@ -15,6 +15,7 @@ class SbtPartitioner(console: SbtConsole) extends IOConsolePartitioner(console.g
   lazy final val bgColor    = Display.getDefault().getSystemColor(SWT.COLOR_WHITE)
   lazy final val infoColor  = Display.getDefault().getSystemColor(SWT.COLOR_DARK_MAGENTA)
   lazy final val errorColor = Display.getDefault().getSystemColor(SWT.COLOR_RED)
+  lazy final val successColor = Display.getDefault().getSystemColor(SWT.COLOR_DARK_GREEN)
   
   lazy final val defaultStyle = (fgColor, bgColor)
 
@@ -29,7 +30,10 @@ class SbtPartitioner(console: SbtConsole) extends IOConsolePartitioner(console.g
 
     if (text ne null) {
       val superStyles = super.getStyleRanges(off, length)
-      val styles = stylePattern("""\[error\]""".r, errorColor) ++ stylePattern("""\[info\]""".r, infoColor)
+      val styles = 
+        stylePattern("""\[error\]""".r, errorColor) ++ 
+        stylePattern("""\[info\]""".r, infoColor) ++
+        stylePattern("""\[success\]""".r, successColor)
   
       superStyles ++ styles.sortBy(_.start)
     } else new Array[StyleRange](0)
