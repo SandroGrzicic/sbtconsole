@@ -1,11 +1,9 @@
 package scala.tools.eclipse.sbtconsole.console
 
 import java.util.regex.Pattern
-
 import scala.tools.eclipse.logging.HasLogger
 import scala.tools.eclipse.sbtconsole.FileUtils
 import scala.util.matching.Regex.Groups
-
 import org.eclipse.core.resources.IFile
 import org.eclipse.core.resources.IMarker
 import org.eclipse.core.resources.ResourcesPlugin
@@ -18,6 +16,7 @@ import org.eclipse.ui.console.IPatternMatchListenerDelegate
 import org.eclipse.ui.console.PatternMatchEvent
 import org.eclipse.ui.console.TextConsole
 import org.eclipse.ui.ide.IDE
+import scala.tools.eclipse.sbtconsole.shellconsole.ShellConsole
 
 class SbtConsole(name: String, imgDescriptor: ImageDescriptor = null, onTermination: () => Unit)
     extends ShellConsole(name, imgDescriptor, onTermination)
@@ -31,9 +30,9 @@ class SbtConsole(name: String, imgDescriptor: ImageDescriptor = null, onTerminat
   addPatternMatchListener(PatMatchListener(sourceLocationPattern, (text, offset) =>
     sourceLocationPattern.r.findFirstMatchIn(text) match {
       case Some(m @ Groups(path, lineNr, msg)) =>
-        logger.info("error found at %s:%d:%s".format(path, lineNr.toInt, msg))
+//        logger.info("error found at %s:%d:%s".format(path, lineNr.toInt, msg))
         for (file <- ResourcesPlugin.getWorkspace.getRoot().findFilesForLocation(new Path(path.trim))) {
-          logger.info("added hyperlink for %s".format(file))
+//          logger.info("added hyperlink for %s".format(file))
           addHyperlink(ErrorHyperlink(file, lineNr.toInt, msg), offset + m.start(1), path.length)
         }
 

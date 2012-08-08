@@ -12,6 +12,7 @@ import org.eclipse.ui.PlatformUI
 import org.eclipse.ui.IPartListener2
 import scala.tools.eclipse.sbtconsole.editor.SbtEditorListener
 import org.eclipse.ui.IWorkbenchPage
+import scala.tools.eclipse.sbtconsole.properties.Preferences
 
 object SbtConsolePlugin {
   @volatile var plugin: SbtConsolePlugin = _
@@ -24,6 +25,17 @@ class SbtConsolePlugin extends AbstractUIPlugin with IStartup with HasLogger {
   override def start(context: BundleContext) {
     super.start(context)
     SbtConsolePlugin.plugin = this
+    
+    if (Preferences.sbtPath(null).isEmpty) {
+      val sbtPath = SbtUtils.getSbtPath()
+      sbtPath match {
+        case Some(path) => 
+          Preferences.workspaceStore.setValue(Preferences.P_SBT_PATH, path)
+        case None => 
+          eclipseLog.error("Path to SBT could not be determined. Please set the path manually (Preferences -> Scala -> SBT Console).")
+      }
+    }
+    
   }
 
   /** Adds a PartListener to the active workbench window. */

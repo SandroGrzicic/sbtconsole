@@ -34,6 +34,11 @@ import net.miginfocom.layout.CC
 import net.miginfocom.layout.LC
 import net.miginfocom.swt.MigLayout
 
+/**
+ * The PropertyPage / PreferencePage for SBT Console.
+ * 
+ * Shows a page with project properties or global workbench preferences.
+ */
 class PreferencesPage extends PropertyPage with IWorkbenchPreferencePage with HasLogger {
   import Preferences._
 
@@ -219,9 +224,12 @@ class PreferenceInitializer extends AbstractPreferenceInitializer {
 
   override def initializeDefaultPreferences() {
     val store = SbtConsolePlugin.plugin.getPreferenceStore
-    store.setDefault(P_SBT_PATH, "sbt-launch.jar")
-    store.setDefault(P_SBT_VERSION, "0.12.0")
-    store.setDefault(P_SBT_SCALA_VERSION, "2.9.2")
+    
+    val (path, version, scalaVersion) = SbtUtils.getSbtInfo()
+    
+    store.setDefault(P_SBT_PATH, path)
+    store.setDefault(P_SBT_VERSION, version)
+    store.setDefault(P_SBT_SCALA_VERSION, scalaVersion)
     store.setDefault(P_SBT_JAVA_ARGS, "-Xmx1000M")
     store.setDefault(P_PROJECT_DIRECTORY, "")
   }

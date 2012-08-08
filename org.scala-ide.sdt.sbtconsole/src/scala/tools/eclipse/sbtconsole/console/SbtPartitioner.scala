@@ -8,43 +8,19 @@ import org.eclipse.swt.SWT
 import org.eclipse.jface.text.BadLocationException
 import scala.util.matching.Regex
 import org.eclipse.swt.graphics.Color
+import scala.tools.eclipse.sbtconsole.shellconsole.ShellConsolePartitioner
 
-class SbtPartitioner(console: SbtConsole) extends IOConsolePartitioner(console.getInputStream, console) {
+class SbtPartitioner(console: SbtConsole) extends ShellConsolePartitioner(console) {
   
-  lazy final val fgColor    = Display.getDefault().getSystemColor(SWT.COLOR_BLACK)
-  lazy final val bgColor    = Display.getDefault().getSystemColor(SWT.COLOR_WHITE)
-  lazy final val infoColor  = Display.getDefault().getSystemColor(SWT.COLOR_DARK_MAGENTA)
-  lazy final val errorColor = Display.getDefault().getSystemColor(SWT.COLOR_RED)
-  lazy final val successColor = Display.getDefault().getSystemColor(SWT.COLOR_DARK_GREEN)
+  lazy final val fgColor    = Display.getDefault.getSystemColor(SWT.COLOR_BLACK)
+  lazy final val bgColor    = Display.getDefault.getSystemColor(SWT.COLOR_WHITE)
+  lazy final val infoColor  = Display.getDefault.getSystemColor(SWT.COLOR_DARK_MAGENTA)
+  lazy final val errorColor = Display.getDefault.getSystemColor(SWT.COLOR_RED)
+  lazy final val successColor = Display.getDefault.getSystemColor(SWT.COLOR_DARK_GREEN)
   
   lazy final val defaultStyle = (fgColor, bgColor)
 
-  override def getStyleRanges(off: Int, length: Int): Array[StyleRange] = try {
-    val part: IOConsolePartition = getPartition(off).asInstanceOf[IOConsolePartition];
-    val offset = part.getOffset()
-    val text = getDocument().get(offset, part.getLength)
-
-    def stylePattern(regex: Regex, color: Color): List[StyleRange] = 
-      for (m <- regex.findAllIn(text).matchData.toList) yield
-        new StyleRange(offset + m.start, m.matched.length, color, bgColor)
-
-    if (text ne null) {
-      val superStyles = super.getStyleRanges(off, length)
-      val styles = 
-        stylePattern("""\[error\]""".r, errorColor) ++ 
-        stylePattern("""\[info\]""".r, infoColor) ++
-        stylePattern("""\[success\]""".r, successColor)
-  
-      superStyles ++ styles.sortBy(_.start)
-    } else new Array[StyleRange](0)
-  } catch {
-    case e: BadLocationException => 
-      // the user has cleared the console
-      super.getStyleRanges(off, length)
-  }
-  
   import SWT._
-  
   /**
    *  Map ANSI control numbers to SWT color codes. It maps the
    *  foreground numer, add 10 for background
@@ -77,4 +53,29 @@ class SbtPartitioner(console: SbtConsole) extends IOConsolePartitioner(console.g
 //    
     Nil
   }
+
+  override def getStyleRanges(off: Int, length: Int): Array[StyleRange] = try {
+    val part: IOConsolePartition = getPartition(off).asInstanceOf[IOConsolePartition];
+    val offset = part.getOffset()
+    val text = getDocument().get(offset, part.getLength)
+
+    def stylePattern(regex: Regex, color: Color): List[StyleRange] = 
+      for (m <- regex.findAllIn(text).matchData.toList) yield
+        new StyleRange(offset + m.start, m.matched.length, color, bgColor)
+
+    if (text ne null) {
+      val superStyles = super.getStyleRanges(off, length)
+      val styles = 
+        stylePattern("""\[error\]""".r, errorColor) ++ 
+        stylePattern("""\[info\]""".r, infoColor) ++
+        stylePattern("""\[success\]""".r, successColor)
+  
+      superStyles ++ styles.sortBy(_.start)
+    } else new Array[StyleRange](0)
+  } catch {
+    case e: BadLocationException => 
+      // the user has cleared the console
+      super.getStyleRanges(off, length)
+  }
+  
 }

@@ -1,4 +1,4 @@
-package scala.tools.eclipse.sbtconsole.console
+package scala.tools.eclipse.sbtconsole.shellconsole
 
 import org.eclipse.swt.events.TraverseListener
 import org.eclipse.swt.events.TraverseEvent
@@ -9,9 +9,15 @@ import org.eclipse.ui.internal.console.IOConsolePage
 import org.eclipse.swt.events.KeyListener
 import org.eclipse.swt.events.KeyEvent
 import org.eclipse.jface.text.BadLocationException
-import org.eclipse.swt.widgets.Display
-import scala.tools.eclipse.util.SWTUtils
+import org.eclipse.jface.text.TextEvent
+import org.eclipse.jface.text.ITextListener
 
+/**
+ * ShellConsole KeyListener.
+ * 
+ * Listens to traverse events in order to support tab completion and console history.
+ * 
+ */
 class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
     extends TraverseListener
     with KeyListener
@@ -30,7 +36,7 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
   }
 
   def moveCaretToEnd() {
-    page.getViewer.getTextWidget.setCaretOffset(page.getViewer.getBottomIndexEndOffset + 1)
+    page.getViewer.getTextWidget.setCaretOffset(Int.MaxValue)
 //    eclipseLog.info("moving caret from " + page.getViewer.getTextWidget.getCaretOffset + " to " + page.getViewer.getBottomIndexEndOffset + " - docsize: " + page.getViewer.getDocument.getLength)
   }
 
@@ -48,7 +54,7 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
 
       case SWT.ARROW_LEFT => // disallow moving before the location of the command line prompt
         val lineInfo = document.getLineInformation(document.getNumberOfLines - 1)
-        if (page.getViewer.getTextWidget.getCaretOffset < lineInfo.getOffset + 1) {
+        if (page.getViewer.getTextWidget.getCaretOffset < lineInfo.getOffset + 3) {
           disableDefaultAction(e)
         }
 
@@ -63,7 +69,7 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
       case SWT.CR | SWT.KEYPAD_CR =>
         addCurrentLineToHistory()
         moveCaretToEnd()
-
+//      case SWT.BS
       case _ => // ignored
     }
   }
@@ -72,9 +78,11 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
     val lineInfo = getCurrentLine
     val typedText = document.get(lineInfo.getOffset + 2, lineInfo.getLength - 2)
 
-    document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, "")
-    console.getInputStream.appendData(typedText + "\t")
-    moveCaretToEnd()
+    if (lineInfo != null) {
+      document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, "")
+      console.getInputStream.appendData(typedText + "\t")
+      moveCaretToEnd()
+    }
   }
 
   def addCurrentLineToHistory() {
@@ -134,5 +142,5 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
   }
 
   def keyPressed(e: KeyEvent) {}
-
+  
 }

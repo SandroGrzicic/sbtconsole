@@ -12,7 +12,7 @@ import scala.tools.eclipse.sbtconsole.actions.ShowSbtConsoleAction
  */
 class SbtConsoleLaunchConfigurationDelegate extends AbstractJavaLaunchConfigurationDelegate {  
   
-  override def launch(configuration:  ILaunchConfiguration, mode : String, launch : ILaunch, monitor : IProgressMonitor) {
+  override def launch(configuration: ILaunchConfiguration, mode: String, launch: ILaunch, monitor: IProgressMonitor) {
     val project = verifyJavaProject(configuration)
     new ShowSbtConsoleAction().performAction(project.getProject, None)
   }

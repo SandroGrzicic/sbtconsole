@@ -1,14 +1,14 @@
-package scala.tools.eclipse.sbtconsole.console
+package scala.tools.eclipse.sbtconsole.shellconsole
 
 import org.eclipse.jface.action.Action
-import org.eclipse.ui.console.IOConsole
 import org.eclipse.ui.internal.console.ConsoleMessages
 import org.eclipse.ui.internal.console.ConsolePluginImages
 import org.eclipse.ui.internal.console.IInternalConsoleConstants
-import org.eclipse.ui.PlatformUI
-import org.eclipse.ui.internal.console.IConsoleHelpContextIds
 import org.eclipse.ui.internal.console.IOConsolePage
 
+/**
+ * Adds a terminate button which disposes the console parent of the specified page.
+ */
 class TerminateAction(page: IOConsolePage) extends Action("Terminate") {
 
   setToolTipText(ConsoleMessages.CloseConsoleAction_0)

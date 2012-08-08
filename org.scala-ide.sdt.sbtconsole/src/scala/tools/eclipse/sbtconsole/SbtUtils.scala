@@ -16,8 +16,22 @@ object SbtUtils {
   val SBT_LIBRARY_LOCATION_SUFFIX = "org.scala-sbt" + SEPARATOR + "sbt" + SEPARATOR
   val USER_HOME = System.getProperty("user.home") + SEPARATOR
   val SBT_PROJECT_FOLDER = "project/"
+  val SBT_LAUNCH_JAR = "sbt-launch.jar"
     
   private var sbtClasspaths = Map.empty[String, List[IClasspathEntry]]
+
+  /**
+   * Returns the SBT path, SBT version and SBT Scala version. 
+   * Uses empty strings in case of unknown information or exceptions.
+   * Use the specific methods in order to get specific information.
+   */
+  def getSbtInfo() = {
+    val path = getSbtPath()
+    val version = path map getSbtVersion getOrElse Left() fold(_ => "", identity)
+    val scalaVersion = sbtToScalaVersion(version)
+    
+    (path getOrElse "", version, scalaVersion)
+  }
 
   /** Fetch the SBT version from the manifest file of the specified sbt-launch.jar. */
   def getSbtVersion(sbtPath: String) = {
@@ -36,8 +50,9 @@ object SbtUtils {
   
   /** Maps SBT versions to Scala versions. */
   def sbtToScalaVersion(sbtVersion: String) = sbtVersion match {
-    case "0.11.2" => "2.9.1"
-    case "0.11.3" => "2.9.2"
+    case "0.11.2"       => "2.9.1"
+    case "0.11.3"       => "2.9.2"
+    case s if s.isEmpty => ""
     case _        => "2.9.2"
   }
   
@@ -65,5 +80,32 @@ object SbtUtils {
     
     sbtClasspaths(sbtVersion)
   }
-
+ 
+  /** Tries to find the SBT location based on the user's OS. */
+  def getSbtPath(): Option[String] = {
+    sys.props("os.name") match {
+      case os: String =>
+        var possibleLocations = List.empty[File]
+        if (os.toLowerCase.contains("windows")) {
+          // windows
+          if (sys.env.contains("ProgramFiles"))
+            possibleLocations :+= new File(sys.env("ProgramFiles") + SEPARATOR + "sbt" + SEPARATOR + SBT_LAUNCH_JAR)
+          if (sys.env.contains("ProgramFiles(x86)"))
+            possibleLocations :+= new File(sys.env("ProgramFiles(x86)") + SEPARATOR + "sbt" + SEPARATOR + SBT_LAUNCH_JAR)
+        } else {
+          // linux / mac, most likely
+          possibleLocations :+= new File("~" + SEPARATOR + "bin" + SEPARATOR + SBT_LAUNCH_JAR)
+          possibleLocations :+= new File("~" + SEPARATOR + "bin" + SEPARATOR + "sbt" + SEPARATOR + SBT_LAUNCH_JAR)
+        }
+        
+        possibleLocations foreach { file =>
+          if (file.exists())
+            return Some(file.toString)
+        }
+        
+      case _ =>
+    }
+    
+    None
+  }
 }
