@@ -8,6 +8,8 @@ import org.eclipse.jdt.core.IClasspathEntry
 import java.io.File
 import java.io.FilenameFilter
 
+case class SbtInfo(path: String, version: String, scalaVersion: String)
+
 /** Useful SBT utility methods. */
 object SbtUtils {
 
@@ -25,12 +27,12 @@ object SbtUtils {
    * Uses empty strings in case of unknown information or exceptions.
    * Use the specific methods in order to get specific information.
    */
-  def getSbtInfo(): Tuple3[String, String, String] = {
+  def getSbtInfo(): SbtInfo = {
     val path = getSbtPath()
     val version = path map getSbtVersion getOrElse Left() fold(_ => "", identity)
     val scalaVersion = sbtToScalaVersion(version)
     
-    (path getOrElse "", version, scalaVersion)
+    SbtInfo(path getOrElse "", version, scalaVersion)
   }
 
   /** Fetch the SBT version from the manifest file of the specified sbt-launch.jar. */

@@ -225,11 +225,11 @@ class PreferenceInitializer extends AbstractPreferenceInitializer {
   override def initializeDefaultPreferences() {
     val store = SbtConsolePlugin.plugin.getPreferenceStore
     
-    val (path, version, scalaVersion) = SbtUtils.getSbtInfo()
+    val sbtInfo = SbtUtils.getSbtInfo()
     
-    store.setDefault(P_SBT_PATH, path)
-    store.setDefault(P_SBT_VERSION, version)
-    store.setDefault(P_SBT_SCALA_VERSION, scalaVersion)
+    store.setDefault(P_SBT_PATH, sbtInfo.path)
+    store.setDefault(P_SBT_VERSION, sbtInfo.version)
+    store.setDefault(P_SBT_SCALA_VERSION, sbtInfo.scalaVersion)
     store.setDefault(P_SBT_JAVA_ARGS, "-Xmx1000M")
     store.setDefault(P_PROJECT_DIRECTORY, "")
   }
