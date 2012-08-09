@@ -25,7 +25,7 @@ object SbtUtils {
    * Uses empty strings in case of unknown information or exceptions.
    * Use the specific methods in order to get specific information.
    */
-  def getSbtInfo() = {
+  def getSbtInfo(): Tuple3[String, String, String] = {
     val path = getSbtPath()
     val version = path map getSbtVersion getOrElse Left() fold(_ => "", identity)
     val scalaVersion = sbtToScalaVersion(version)
@@ -34,7 +34,7 @@ object SbtUtils {
   }
 
   /** Fetch the SBT version from the manifest file of the specified sbt-launch.jar. */
-  def getSbtVersion(sbtPath: String) = {
+  def getSbtVersion(sbtPath: String): Either[Throwable, String] = {
     var jar: JarFile = null
     try {
       jar = new java.util.jar.JarFile(sbtPath)
@@ -49,14 +49,14 @@ object SbtUtils {
   }
   
   /** Maps SBT versions to Scala versions. */
-  def sbtToScalaVersion(sbtVersion: String) = sbtVersion match {
+  def sbtToScalaVersion(sbtVersion: String): String = sbtVersion match {
     case "0.11.2"       => "2.9.1"
     case "0.11.3"       => "2.9.2"
     case s if s.isEmpty => ""
     case _        => "2.9.2"
   }
   
-  def getSbtClasspathFor(sbtVersion: String) = {
+  def getSbtClasspathFor(sbtVersion: String): List[IClasspathEntry] = {
     if (!sbtClasspaths.contains(sbtVersion)) {
       
       val scalaPath = "scala-" + sbtToScalaVersion(sbtVersion) 

@@ -1,9 +1,12 @@
 package scala.tools.eclipse.sbtconsole.console
 
 import java.util.regex.Pattern
+
 import scala.tools.eclipse.logging.HasLogger
 import scala.tools.eclipse.sbtconsole.FileUtils
+import scala.tools.eclipse.shellconsole.ShellConsole
 import scala.util.matching.Regex.Groups
+
 import org.eclipse.core.resources.IFile
 import org.eclipse.core.resources.IMarker
 import org.eclipse.core.resources.ResourcesPlugin
@@ -16,10 +19,9 @@ import org.eclipse.ui.console.IPatternMatchListenerDelegate
 import org.eclipse.ui.console.PatternMatchEvent
 import org.eclipse.ui.console.TextConsole
 import org.eclipse.ui.ide.IDE
-import scala.tools.eclipse.sbtconsole.shellconsole.ShellConsole
 
-class SbtConsole(name: String, imgDescriptor: ImageDescriptor = null, onTermination: () => Unit)
-    extends ShellConsole(name, imgDescriptor, onTermination)
+class SbtConsole(name: String, imgDescriptor: ImageDescriptor = null, onRestartFunc: () => Unit, onTerminateFunc: () => Unit)
+    extends ShellConsole(name, imgDescriptor)
     with HasLogger {
 
   val partitioner = new SbtPartitioner(this)
@@ -43,6 +45,14 @@ class SbtConsole(name: String, imgDescriptor: ImageDescriptor = null, onTerminat
 
   override def dispose() = {
     super.dispose()
+  }
+  
+  override def onTerminate() {
+    onTerminateFunc()
+  }
+  
+  override def onRestart() {
+    onRestartFunc()
   }
 
 }

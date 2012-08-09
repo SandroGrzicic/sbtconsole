@@ -1,4 +1,4 @@
-package scala.tools.eclipse.sbtconsole.shellconsole
+package scala.tools.eclipse.shellconsole
 
 import org.eclipse.ui.internal.console.IOConsolePartitioner
 import org.eclipse.ui.console.IOConsoleInputStream

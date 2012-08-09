@@ -1,14 +1,23 @@
 package scala.tools.eclipse.sbtconsole.console
 
-import org.eclipse.ui.internal.console.IOConsolePartitioner
+import scala.Array.canBuildFrom
+import scala.tools.eclipse.shellconsole.ShellConsolePartitioner
+import scala.util.matching.Regex
+
+import org.eclipse.jface.text.BadLocationException
+import org.eclipse.swt.SWT
+import org.eclipse.swt.SWT.COLOR_BLACK
+import org.eclipse.swt.SWT.COLOR_BLUE
+import org.eclipse.swt.SWT.COLOR_CYAN
+import org.eclipse.swt.SWT.COLOR_GREEN
+import org.eclipse.swt.SWT.COLOR_MAGENTA
+import org.eclipse.swt.SWT.COLOR_RED
+import org.eclipse.swt.SWT.COLOR_WHITE
+import org.eclipse.swt.SWT.COLOR_YELLOW
+import org.eclipse.swt.custom.StyleRange
+import org.eclipse.swt.graphics.Color
 import org.eclipse.swt.widgets.Display
 import org.eclipse.ui.internal.console.IOConsolePartition
-import org.eclipse.swt.custom.StyleRange
-import org.eclipse.swt.SWT
-import org.eclipse.jface.text.BadLocationException
-import scala.util.matching.Regex
-import org.eclipse.swt.graphics.Color
-import scala.tools.eclipse.sbtconsole.shellconsole.ShellConsolePartitioner
 
 class SbtPartitioner(console: SbtConsole) extends ShellConsolePartitioner(console) {
   

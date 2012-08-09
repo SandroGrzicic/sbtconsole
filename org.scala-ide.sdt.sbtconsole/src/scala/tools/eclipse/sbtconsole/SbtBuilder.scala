@@ -21,7 +21,7 @@ import org.eclipse.ui.console.IConsole
 import org.eclipse.ui.dialogs.PreferencesUtil
 import org.eclipse.jface.util.IPropertyChangeListener
 import org.eclipse.jface.util.PropertyChangeEvent
-
+import scala.tools.eclipse.util.SWTUtils
 
 /**
  * Holds the SBT process, the associated project and the corresponding Console instance.
@@ -44,30 +44,32 @@ class SbtBuilder(project: ScalaProject) extends HasLogger {
    * return it. Otherwise create and add a new console to the Console manager.
    */
   def getConsole(): SbtConsole = {
-    consoleManager.getConsoles().find(_.getName == consoleName) match {
+    consoleManager.getConsoles.find(_.getName == consoleName) match {
       case Some(c: SbtConsole) => c
-      case None => createConsole()
+      case None                => createConsole()
     }
   }
 
-  
+  /** Returns whether the console is currently displayed. */
+  def consoleDisplayed: Boolean = consoleManager.getConsoles.exists(_.getName == consoleName)
+
   /**
    * Create a new SbtConsole. Install the pattern matcher that adds hyperlinks
    * for error messages.
    */
   private def createConsole(): SbtConsole = {
 
+    val onConsoleRestart = () => restartProcess()
     val onConsoleTermination = () => dispose()
-    val console = new SbtConsole(consoleName, null, onConsoleTermination)
+    val console = new SbtConsole(consoleName, null, onConsoleRestart, onConsoleTermination)
     console.setConsoleWidth(140)
-    
+
     consoleManager.addConsoles(Array[IConsole](console))
     console
   }
 
   var consoleOutputStream: OutputStream = _
 
-  
   /**
    * Launch the SBT process and route input and output through the Console object.
    * Escape sequences are stripped from the output of SBT.
@@ -76,7 +78,7 @@ class SbtBuilder(project: ScalaProject) extends HasLogger {
 
     val pio = new ProcessIO(in => BasicIO.transferFully(console.getInputStream, in),
       os => BasicIO.transferFully(os, consoleOutputStream),
-      es => BasicIO.transferFully(es, consoleOutputStream), 
+      es => BasicIO.transferFully(es, consoleOutputStream),
       false
     )
 
@@ -113,79 +115,106 @@ Please check the path to sbt-launch.jar (currently %s) in SBT Console Preference
     import Preferences._
 
     val p = project.underlying.getProject
-    
+
     (sbtPath(p), sbtJavaArgs(p), projectDirectory(p))
   }
 
-  /** Entry point. */ 
+  /** 
+   * Entry point.
+   * 
+   * Gets the current project directory and other settings, 
+   * uses them to start the SBT process and creates and displays the console.  
+   */
   def showConsole() {
-    
+
     def fetchProjectDirectory() = {
       import Preferences._
-      
+
       val projectDirectory = project.underlying.getLocation.toFile
       val projectFiles = projectDirectory.list
       val preferences = projectStore(project.underlying.getProject)
 
       // check if this is a SBT root directory      
       if (projectFiles.contains("project") || projectFiles.contains("build.sbt")) {
-        
+
         // current directory is almost certainly a SBT project root
         val projectDir = projectDirectory.getPath
         preferences.setValue(P_PROJECT_DIRECTORY, projectDir)
         preferences.save()
         projectDir
-      
+
       } else {
-        
+
         // ask the user to choose a project root
         val shell = ScalaPlugin.getShell
         val useCurrentDirectory = MessageDialog.openQuestion(
-            shell, 
-            "Project root directory", 
-            "Would you like to use the current project directory as the root directory for SBT?\n\n" +
+          shell,
+          "Project root directory",
+          "Would you like to use the current project directory as the root directory for SBT?\n\n" +
             "Select No if this is part of a multi-module project, and you would like to set the project root yourself."
-         ) // blocking
-         
-         if (useCurrentDirectory) {
-           val projectDir = projectDirectory.getPath
-           preferences.setValue(P_PROJECT_DIRECTORY, projectDir)
-           preferences.save()
-           projectDir
-         } else {
-           val dialog = PreferencesUtil.createPropertyDialogOn(shell, project.underlying, PAGE_ID, Array(PAGE_ID), null)
+        ) // blocking
 
-           dialog.open() // blocking
-           
-           val projectDir = loadSbtSettings()._3
-           projectDir
-         }
+        if (useCurrentDirectory) {
+          val projectDir = projectDirectory.getPath
+          preferences.setValue(P_PROJECT_DIRECTORY, projectDir)
+          preferences.save()
+          projectDir
+        } else {
+          val dialog = PreferencesUtil.createPropertyDialogOn(shell, project.underlying, PAGE_ID, Array(PAGE_ID), null)
+
+          dialog.open() // blocking
+
+          val projectDir = loadSbtSettings()._3
+          projectDir
+        }
       }
     }
-   
+
     val (pathToSbt, sbtJavaArgs, projectDirSetting) = loadSbtSettings()
-          
+
     var projectDir: String = projectDirSetting
     if (projectDirSetting.isEmpty) {
       projectDir = fetchProjectDirectory()
     }
-    
+
     if (!projectDir.isEmpty) {
-      if (sbtProcess == null) 
+      if (sbtProcess == null) {
         launchSbt(pathToSbt, sbtJavaArgs, projectDir)
+      }
       consoleManager.showConsoleView(console)
     }
   }
 
+  /** Restarts the SBT process and activates the console. */
+  def restartProcess() {
+    if (visible) {
+      shuttingDown = true
+      sbtProcess.destroy()
+      sbtProcess = null
+
+      console.clearConsole()
+
+      new Thread() {
+        override def run() {
+          Thread.sleep(200) // HACK due to SBT process destroy slowness. number is magic. TODO: fix
+          SWTUtils.asyncExec {
+            showConsole()
+          }
+        }
+      }.start()
+    }
+  }
+
+  /** Terminates the SBT process and the console. */
   def dispose() {
     if (visible) {
       shuttingDown = true
-      sbtProcess.destroy
+      sbtProcess.destroy()
       sbtProcess = null
       console.dispose()
       consoleManager.removeConsoles(Array(console))
     }
   }
-  
+
   def visible: Boolean = sbtProcess ne null
 }

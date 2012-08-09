@@ -1,4 +1,4 @@
-package scala.tools.eclipse.sbtconsole.shellconsole
+package scala.tools.eclipse.shellconsole
 
 import org.eclipse.swt.events.TraverseListener
 import org.eclipse.swt.events.TraverseEvent
@@ -78,11 +78,15 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
     val lineInfo = getCurrentLine
     val typedText = document.get(lineInfo.getOffset + 2, lineInfo.getLength - 2)
 
-    if (lineInfo != null) {
+    try {
       document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, "")
       console.getInputStream.appendData(typedText + "\t")
-      moveCaretToEnd()
+    } catch {
+      case _ =>
+//        eclipseLog.info(lineInfo.getOffset + " " + lineInfo.getLength + " - " + e.getMessage(), e)
+        console.getInputStream.appendData("\t")
     }
+    moveCaretToEnd()
   }
 
   def addCurrentLineToHistory() {

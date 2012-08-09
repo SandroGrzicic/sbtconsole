@@ -1,4 +1,4 @@
-package scala.tools.eclipse.sbtconsole.shellconsole
+package scala.tools.eclipse.shellconsole
 
 import scala.tools.eclipse.logging.HasLogger
 import org.eclipse.jface.action.IToolBarManager
@@ -7,6 +7,7 @@ import org.eclipse.ui.console.IConsoleConstants
 import org.eclipse.ui.console.IConsoleView
 import org.eclipse.ui.console.IOConsole
 import org.eclipse.ui.internal.console.IOConsolePage
+import org.eclipse.jface.action.Action
 
 /**
  * ShellConsole Page.
@@ -14,11 +15,11 @@ import org.eclipse.ui.internal.console.IOConsolePage
  * Based on IOConsolePage, adds a ShellConsoleKeyListener, a terminate button, 
  * and executes onTerminate on termination. 
  */
-class ShellConsolePage(console: IOConsole, view: IConsoleView, onTermination: () => Unit)
+class ShellConsolePage(console: ShellConsole, view: IConsoleView)
     extends IOConsolePage(console, view)
     with HasLogger {
 
-  private var terminateAction: TerminateAction = _
+  private var actions = List.empty[Action]
     
   private var listener: ShellConsoleKeyListener = _
   
@@ -34,25 +35,26 @@ class ShellConsolePage(console: IOConsole, view: IConsoleView, onTermination: ()
 
   override protected def createActions() {
     super.createActions()
-    terminateAction = new TerminateAction(this)
-    
+    actions :+= new TerminateAction(console)
+    actions :+= new RestartAction(console)
   }
+  
   override protected def configureToolBar(mgr: IToolBarManager) {
-    mgr.appendToGroup(IConsoleConstants.OUTPUT_GROUP, terminateAction)
+    actions foreach { action =>
+      mgr.appendToGroup(IConsoleConstants.OUTPUT_GROUP, action)      
+    }
     super.configureToolBar(mgr)
   }
   
   override def dispose() {
-    if (terminateAction != null) {
-      terminateAction = null
-    }
+    actions = null
+
     if (getControl != null) {
       getControl.removeTraverseListener(listener)
       getControl.removeKeyListener(listener)
     }
     
     super.dispose()
-    onTermination()
   }
 
 }
