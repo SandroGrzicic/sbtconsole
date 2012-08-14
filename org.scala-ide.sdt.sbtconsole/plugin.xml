@@ -64,7 +64,7 @@
         id="scala.sbtconsole.tabGroup">
         <launchMode
               mode="run"
-              description="Shows/hides the SBT console">
+              description="Shows the SBT console">
         </launchMode>
     </launchConfigurationTabGroup>
     </extension>
@@ -79,8 +79,8 @@
         enablesFor="1"
         menubarPath="org.scala-ide.sdt.core.popupMenu/content"
         id="org.scala-ide.sdt.ui.createSbtConsole"
-        label="Show/hide SBT Console"
-        tooltip="Shows or hides the SBT Console"/>
+        label="Show the SBT Console"
+        tooltip="Shows the SBT Console"/>
 
       <visibility>
         <and>
@@ -112,10 +112,10 @@
          class="scala.tools.eclipse.sbtconsole.actions.ShowSbtConsoleAction"
          enablesFor="*"
          id="org.scala-ide.sdt.ui.runSbt"
-         label="Show/hide SBT Console"
+         label="Show the SBT Console"
          menubarPath="org_scala-ide_sdt_ui_menu/additions"
          style="toggle"
-         tooltip="Shows or hides the SBT console for the current project."
+         tooltip="Shows the SBT console for the current project."
          definitionId="scala.tools.eclipse.sbtconsole.commands.ShowSbtConsoleAction"
          >
        </action>

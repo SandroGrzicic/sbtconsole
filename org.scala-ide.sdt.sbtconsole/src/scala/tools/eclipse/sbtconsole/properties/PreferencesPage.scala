@@ -8,7 +8,6 @@ import scala.tools.eclipse.properties.PropertyStore
 import scala.tools.eclipse.sbtconsole.SbtConsolePlugin
 import scala.tools.eclipse.sbtconsole.SbtUtils
 import scala.tools.eclipse.util.SWTUtils.noArgFnToSelectionAdapter
-
 import org.eclipse.core.resources.IProject
 import org.eclipse.core.runtime.preferences.AbstractPreferenceInitializer
 import org.eclipse.jdt.core.IJavaProject
@@ -28,15 +27,15 @@ import org.eclipse.ui.IWorkbench
 import org.eclipse.ui.IWorkbenchPreferencePage
 import org.eclipse.ui.dialogs.PreferencesUtil
 import org.eclipse.ui.dialogs.PropertyPage
-
 import net.miginfocom.layout.AC
 import net.miginfocom.layout.CC
 import net.miginfocom.layout.LC
 import net.miginfocom.swt.MigLayout
+import org.eclipse.jface.preference.BooleanFieldEditor
 
 /**
  * The PropertyPage / PreferencePage for SBT Console.
- * 
+ *
  * Shows a page with project properties or global workbench preferences.
  */
 class PreferencesPage extends PropertyPage with IWorkbenchPreferencePage with HasLogger {
@@ -149,6 +148,12 @@ class PreferencesPage extends PropertyPage with IWorkbenchPreferencePage with Ha
     }
 
     if (!isGlobalPrefs) {
+      fieldEditors += addNewFieldEditorWrappedInComposite(parent = control) { parent =>
+        new BooleanFieldEditor(P_SBT_AUTOSTART, "Autostart SBT Console on Eclipse startup", parent) {
+          allSharedControls += getChangeControl(parent)
+        }
+      }
+
       val enabled = getPreferenceStore.getBoolean(P_USE_PROJECT_SPECIFIC_SETTINGS)
       allSharedControls foreach { _.setEnabled(enabled) }
     }
@@ -164,11 +169,11 @@ class PreferencesPage extends PropertyPage with IWorkbenchPreferencePage with Ha
   override def performOk() = {
     super.performOk()
     fieldEditors.foreach(_.store)
-    
+
     val prefStore = preferenceStore(getProject)
     SbtUtils.getSbtVersion(prefStore.getString(P_SBT_PATH)) match {
       case Right(version) => prefStore.setValue(P_SBT_VERSION, version)
-      case Left(e)        => eclipseLog.info("Exception while reading SBT version - check if the path to the sbt launcher jar is correct.", e) 
+      case Left(e)        => eclipseLog.info("Exception while reading SBT version - check if the path to the sbt launcher jar is correct.", e)
     }
 
     SbtConsolePlugin.plugin.savePluginPreferences()
@@ -184,6 +189,7 @@ object Preferences {
   val P_SBT_VERSION = BASE + "sbtVersion"
   val P_SBT_SCALA_VERSION = BASE + "sbtScalaVersion"
   val P_SBT_JAVA_ARGS = BASE + "sbtJavaArgs"
+  val P_SBT_AUTOSTART = BASE + "sbtAutostart"
   val P_PROJECT_DIRECTORY = BASE + "projectDir"
   val P_USE_PROJECT_SPECIFIC_SETTINGS = BASE + "useProjectSpecificSettings"
 
@@ -193,11 +199,11 @@ object Preferences {
     new PropertyStore(project, workspaceStore, SbtConsolePlugin.plugin.pluginId)
 
   def preferenceStore = workspaceStore
-  
+
   def preferenceStore(project: IProject): IPreferenceStore = {
     if (project == null)
       return workspaceStore
-      
+
     val useProjectSettings = projectStore(project).getBoolean(P_USE_PROJECT_SPECIFIC_SETTINGS)
 
     if (useProjectSettings)
@@ -206,15 +212,17 @@ object Preferences {
       workspaceStore
   }
 
-  def sbtPath(project: IProject) = preferenceStore(project).getString(P_SBT_PATH)
+  def sbtPath(project: IProject = null) = preferenceStore(project).getString(P_SBT_PATH)
 
-  def sbtVersion(project: IProject) = preferenceStore(project).getString(P_SBT_VERSION)
-  
-  def sbtScalaVersion(project: IProject) = preferenceStore(project).getString(P_SBT_SCALA_VERSION)
+  def sbtVersion(project: IProject = null) = preferenceStore(project).getString(P_SBT_VERSION)
 
-  def sbtJavaArgs(project: IProject) = preferenceStore(project).getString(P_SBT_JAVA_ARGS)
+  def sbtScalaVersion(project: IProject = null) = preferenceStore(project).getString(P_SBT_SCALA_VERSION)
 
-  def projectDirectory(project: IProject) = projectStore(project).getString(P_PROJECT_DIRECTORY)
+  def sbtJavaArgs(project: IProject = null) = preferenceStore(project).getString(P_SBT_JAVA_ARGS)
+
+  def sbtAutostart(project: IProject = null) = preferenceStore(project).getBoolean(P_SBT_AUTOSTART)
+
+  def projectDirectory(project: IProject = null) = projectStore(project).getString(P_PROJECT_DIRECTORY)
 
 }
 
@@ -224,13 +232,14 @@ class PreferenceInitializer extends AbstractPreferenceInitializer {
 
   override def initializeDefaultPreferences() {
     val store = SbtConsolePlugin.plugin.getPreferenceStore
-    
+
     val sbtInfo = SbtUtils.getSbtInfo()
-    
+
     store.setDefault(P_SBT_PATH, sbtInfo.path)
     store.setDefault(P_SBT_VERSION, sbtInfo.version)
     store.setDefault(P_SBT_SCALA_VERSION, sbtInfo.scalaVersion)
     store.setDefault(P_SBT_JAVA_ARGS, "-Xmx1000M")
+    store.setDefault(P_SBT_AUTOSTART, false)
     store.setDefault(P_PROJECT_DIRECTORY, "")
   }
 

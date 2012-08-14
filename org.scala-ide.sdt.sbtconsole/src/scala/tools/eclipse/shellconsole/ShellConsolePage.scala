@@ -23,7 +23,7 @@ class ShellConsolePage(console: ShellConsole, view: IConsoleView)
     
   private var listener: ShellConsoleKeyListener = _
   
-  def getListener = listener
+  def getListener: ShellConsoleKeyListener = listener
   
   override def createControl(parent: Composite) {
     super.createControl(parent)

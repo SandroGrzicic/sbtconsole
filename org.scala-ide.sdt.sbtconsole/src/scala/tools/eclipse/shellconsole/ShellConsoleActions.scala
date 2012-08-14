@@ -11,7 +11,7 @@ import scala.tools.eclipse.ScalaImages
  * Adds a terminate button. By default, disposes the console.
  */
 class TerminateAction(console: ShellConsole) extends Action("Terminate") {
-  setToolTipText(ConsoleMessages.CloseConsoleAction_0)
+  setToolTipText("Terminate SBT")
   
   private val icon = ConsolePluginImages.getImageDescriptor(IInternalConsoleConstants.IMG_ELCL_CLOSE)
   setHoverImageDescriptor(icon)
@@ -30,7 +30,7 @@ class TerminateAction(console: ShellConsole) extends Action("Terminate") {
  * Adds a Restart button. By default, does nothing. 
  */
 class RestartAction(console: ShellConsole) extends Action("Restart") {
-  setToolTipText("Restart Console")
+  setToolTipText("Restart SBT")
 
   private val icon = ScalaImages.REFRESH_REPL_TOOLBAR
   setHoverImageDescriptor(icon)

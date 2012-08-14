@@ -13,6 +13,9 @@ import org.eclipse.ui.IPartListener2
 import scala.tools.eclipse.sbtconsole.editor.SbtEditorListener
 import org.eclipse.ui.IWorkbenchPage
 import scala.tools.eclipse.sbtconsole.properties.Preferences
+import scala.tools.eclipse.sbtconsole.actions.ShowSbtConsoleAction
+import org.eclipse.ui.internal.Workbench
+import scala.tools.eclipse.util.SWTUtils
 
 object SbtConsolePlugin {
   @volatile var plugin: SbtConsolePlugin = _
@@ -25,14 +28,26 @@ class SbtConsolePlugin extends AbstractUIPlugin with IStartup with HasLogger {
   override def start(context: BundleContext) {
     super.start(context)
     SbtConsolePlugin.plugin = this
-    
-    if (Preferences.sbtPath(null).isEmpty) {
+
+    if (Preferences.sbtPath().isEmpty) {
       val sbtPath = SbtUtils.getSbtPath()
       sbtPath match {
-        case Some(path) => 
+        case Some(path) =>
           Preferences.workspaceStore.setValue(Preferences.P_SBT_PATH, path)
-        case None => 
+        case None =>
           eclipseLog.error("Path to SBT could not be determined. Please set the path manually (Preferences -> Scala -> SBT Console).")
+      }
+    } else {
+      if (Preferences.sbtAutostart()) {
+        SWTUtils asyncExec {
+          for (window <- Workbench.getInstance.getWorkbenchWindows()) {
+            val action = new ShowSbtConsoleAction()
+            action.init(window)
+            for (project <- action.editedProject) {
+              action.performAction(project)
+            }
+          }
+        }
       }
     }
     
@@ -56,7 +71,7 @@ class SbtConsolePlugin extends AbstractUIPlugin with IStartup with HasLogger {
       page.removePartListener(sbtEditorListener)
     }
   }
-  
+
   def activePage: Option[IWorkbenchPage] = {
     PlatformUI.getWorkbench() match {
       case null => None

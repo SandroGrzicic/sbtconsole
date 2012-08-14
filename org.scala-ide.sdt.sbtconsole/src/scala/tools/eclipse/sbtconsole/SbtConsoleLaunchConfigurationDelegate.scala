@@ -14,7 +14,7 @@ class SbtConsoleLaunchConfigurationDelegate extends AbstractJavaLaunchConfigurat
   
   override def launch(configuration: ILaunchConfiguration, mode: String, launch: ILaunch, monitor: IProgressMonitor) {
     val project = verifyJavaProject(configuration)
-    new ShowSbtConsoleAction().performAction(project.getProject, None)
+    new ShowSbtConsoleAction().performAction(project.getProject)
   }
  
 }

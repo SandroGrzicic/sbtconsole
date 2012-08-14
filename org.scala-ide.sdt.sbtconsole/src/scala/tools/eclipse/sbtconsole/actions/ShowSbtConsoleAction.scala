@@ -17,33 +17,15 @@ import scala.tools.eclipse.sbtconsole.SbtBuilder
  */
 class ShowSbtConsoleAction extends IWorkbenchWindowActionDelegate with HasLogger {
 
-  def performAction(project: IProject, action: Option[IAction]) {
-    val scalaProject = ScalaPlugin.plugin.getScalaProject(project)
-    
-    import SbtConsoleHolder._
-    sbtConsoles.get(scalaProject) match {
-      case Some(console) =>
-        if (console.visible) {
-          console.dispose()
-        }
-        action.foreach { _.setChecked(false) }
-        sbtConsoles -= scalaProject
-      case None =>
-        val console = new SbtBuilder(scalaProject)
-        sbtConsoles += scalaProject -> console 
-        console.showConsole()
-        action.foreach { _.setChecked(true) }
-    }
-  }
-  
-  def performAction(project: IProject, action: IAction) {
-    performAction(project, Option(action))
+  /** Open the console. */
+  def performAction(project: IProject, action: IAction = null) {
+    SbtBuilder(project)
   }
 
-  private var parentWindow: IWorkbenchWindow = null
+  private var parentWindow: Option[IWorkbenchWindow] = None
 
   override def init(window: IWorkbenchWindow) {
-    parentWindow = window
+    parentWindow = Option(window)
   }
 
   def dispose = {}
@@ -52,17 +34,17 @@ class ShowSbtConsoleAction extends IWorkbenchWindowActionDelegate with HasLogger
     if (currentProject.isDefined)
       performAction(currentProject.get, action)
     else
-      eclipseLog.warn("Couldn't figure out current project.")
+      eclipseLog.warn("Couldn't figure out the current project.")
   }
   
   def editedProject: Option[IProject] = for {
-      w <- Option(parentWindow)
+      w <- parentWindow
       page <- Option(w.getActivePage)
       editor <- Option(page.getActiveEditor)
       input <- Option(editor.getEditorInput)
       res <- input.adaptToSafe[IResource]
       proj <- Option(res.getProject())
-    } yield proj;
+    } yield proj
 
   var currentProject: Option[IProject] = None
 
@@ -75,7 +57,7 @@ class ShowSbtConsoleAction extends IWorkbenchWindowActionDelegate with HasLogger
     
     selection match {
       case structuredSel: IStructuredSelection =>
-        structuredSel.getFirstElement() match {
+        structuredSel.getFirstElement match {
           case el: IProject          => setProject(Some(el))
           case adaptable: IAdaptable => setProject(adaptable.adaptToSafe[IProject])
           case _                     => setProject(None)
@@ -83,9 +65,4 @@ class ShowSbtConsoleAction extends IWorkbenchWindowActionDelegate with HasLogger
       case _ => setProject(None)
     }
   }
-}
-
-object SbtConsoleHolder {
-  /** Holder of SbtConsoles. */
-  var sbtConsoles = collection.immutable.Map[ScalaProject, SbtBuilder]()
 }
