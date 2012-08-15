@@ -103,7 +103,7 @@ class SbtBuilder(project: IProject) extends HasLogger {
   
   /** Closes the console. */
   def disposeConsole() {
-    console.dispose()
+    console.disposeConsole()
     consoleManager.removeConsoles(Array(console)) 
   }
   
@@ -121,8 +121,7 @@ class SbtBuilder(project: IProject) extends HasLogger {
     if (sbtProcessStarted) {
       terminateSbt()
     } else {
-      console.disposeConsole()
-      consoleManager.removeConsoles(Array(console))
+      disposeConsole()
     }
   }
 
