@@ -147,15 +147,26 @@ class PreferencesPage extends PropertyPage with IWorkbenchPreferencePage with Ha
       }
     }
 
-    if (!isGlobalPrefs) {
+    if (isGlobalPrefs) {
+      
       fieldEditors += addNewFieldEditorWrappedInComposite(parent = control) { parent =>
         new BooleanFieldEditor(P_SBT_AUTOSTART, "Autostart SBT Console on Eclipse startup", parent) {
           allSharedControls += getChangeControl(parent)
         }
       }
-
+      fieldEditors += addNewFieldEditorWrappedInComposite(parent = control) { parent =>
+        new BooleanFieldEditor(P_SBT_EDITOR_SUPPORT, "Auto-add local SBT JARs for SBT project Scala build files", parent) {
+          allSharedControls += getChangeControl(parent)
+        }
+      }
+      
+    }
+    
+    if (!isGlobalPrefs) {
+      
       val enabled = getPreferenceStore.getBoolean(P_USE_PROJECT_SPECIFIC_SETTINGS)
       allSharedControls foreach { _.setEnabled(enabled) }
+      
     }
 
     control
@@ -190,6 +201,7 @@ object Preferences {
   val P_SBT_SCALA_VERSION = BASE + "sbtScalaVersion"
   val P_SBT_JAVA_ARGS = BASE + "sbtJavaArgs"
   val P_SBT_AUTOSTART = BASE + "sbtAutostart"
+  val P_SBT_EDITOR_SUPPORT = BASE + "sbtEditorSupport"
   val P_PROJECT_DIRECTORY = BASE + "projectDir"
   val P_USE_PROJECT_SPECIFIC_SETTINGS = BASE + "useProjectSpecificSettings"
 
@@ -220,7 +232,9 @@ object Preferences {
 
   def sbtJavaArgs(project: IProject = null) = preferenceStore(project).getString(P_SBT_JAVA_ARGS)
 
-  def sbtAutostart(project: IProject = null) = preferenceStore(project).getBoolean(P_SBT_AUTOSTART)
+  def sbtAutostart = workspaceStore.getBoolean(P_SBT_AUTOSTART)
+  
+  def sbtEditorSupport = workspaceStore.getBoolean(P_SBT_EDITOR_SUPPORT)
 
   def projectDirectory(project: IProject = null) = projectStore(project).getString(P_PROJECT_DIRECTORY)
 
@@ -240,6 +254,7 @@ class PreferenceInitializer extends AbstractPreferenceInitializer {
     store.setDefault(P_SBT_SCALA_VERSION, sbtInfo.scalaVersion)
     store.setDefault(P_SBT_JAVA_ARGS, "-Xmx1000M")
     store.setDefault(P_SBT_AUTOSTART, false)
+    store.setDefault(P_SBT_EDITOR_SUPPORT, false)
     store.setDefault(P_PROJECT_DIRECTORY, "")
   }
 

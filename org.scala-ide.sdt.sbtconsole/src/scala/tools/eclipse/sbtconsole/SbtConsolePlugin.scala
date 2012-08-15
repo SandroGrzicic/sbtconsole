@@ -38,7 +38,7 @@ class SbtConsolePlugin extends AbstractUIPlugin with IStartup with HasLogger {
           eclipseLog.error("Path to SBT could not be determined. Please set the path manually (Preferences -> Scala -> SBT Console).")
       }
     } else {
-      if (Preferences.sbtAutostart()) {
+      if (Preferences.sbtAutostart) {
         SWTUtils asyncExec {
           for (window <- Workbench.getInstance.getWorkbenchWindows()) {
             val action = new ShowSbtConsoleAction()
@@ -50,27 +50,39 @@ class SbtConsolePlugin extends AbstractUIPlugin with IStartup with HasLogger {
         }
       }
     }
-    
+
   }
 
-  /** Adds a PartListener to the active workbench window. */
   def earlyStartup() {
-    PlatformUI.getWorkbench().getDisplay.asyncExec(new Runnable() {
-      def run() {
-        activePage foreach { page =>
-          page.addPartListener(sbtEditorListener)
-        }
-      }
-    })
+    toggleSbtEditorSupport(true)
   }
 
   override def stop(context: BundleContext) {
     super.stop(context)
-    activePage foreach { page =>
-      sbtEditorListener.stop()
-      page.removePartListener(sbtEditorListener)
+
+    toggleSbtEditorSupport(false)
+
+    SbtConsolePlugin.plugin = null
+  }
+  
+  /** Switch SBT Scala project file editing support on or off. */
+  def toggleSbtEditorSupport(status: Boolean) {
+    if (Preferences.sbtEditorSupport) {
+      if (status) {
+        SWTUtils.asyncExec {
+          activePage foreach { page =>
+            page.addPartListener(sbtEditorListener)
+          }
+        }
+      } else {
+        activePage foreach { page =>
+          sbtEditorListener.stop()
+          page.removePartListener(sbtEditorListener)
+        }
+      }
     }
   }
+
 
   def activePage: Option[IWorkbenchPage] = {
     PlatformUI.getWorkbench() match {

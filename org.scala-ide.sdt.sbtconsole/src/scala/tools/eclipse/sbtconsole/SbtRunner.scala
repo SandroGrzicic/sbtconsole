@@ -21,6 +21,8 @@ object SbtRunner {
   
   case object IsStarted extends SbtRunnerMessage
   
+  case object Shutdown extends SbtRunnerMessage
+  
   case class SbtConfiguration(project: IProject, pathToSbt: String, sbtJavaArgs: String, projectDir: String)
   case class ConsoleStreams(in: InputStream, newOut: () => OutputStream)
   
@@ -49,6 +51,9 @@ class SbtRunner extends Actor with HasLogger {
         case r: Restart => restartSbt(r.stop, r.start)
         case s: Stop    => stopSbt(s.stop, s.afterStopped)
         case IsStarted  => reply(sbtProcess.isDefined)
+        case Shutdown   =>
+          stopSbt(() => Unit, () => Unit)
+          exit
       } 
     }
   }

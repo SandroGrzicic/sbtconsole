@@ -107,15 +107,6 @@ class SbtBuilder(project: IProject) extends HasLogger {
     consoleManager.removeConsoles(Array(console)) 
   }
   
-  /** Terminates SBT if it's running and closes the console. */
-  def dispose() {
-    if (sbtProcessStarted) {
-      sbtRunner ! Stop(sendExitToSbt, disposeConsole)
-    } else {
-      disposeConsole()
-    }
-  }
-
   /** Terminates SBT if it's running or closes the console if it's stopped. */
   def terminate() {
     if (sbtProcessStarted) {
@@ -124,6 +115,17 @@ class SbtBuilder(project: IProject) extends HasLogger {
       disposeConsole()
     }
   }
+
+  /** Terminates SBT if it's running and closes the console. */
+  def dispose() {
+    if (sbtProcessStarted) {
+      sbtRunner ! Stop(sendExitToSbt, disposeConsole)
+    } else {
+      disposeConsole()
+      sbtRunner ! Shutdown
+    }
+  }
+
 
   /** Try to cleanly close the SBT process by sending it an exit command. */
   private def sendExitToSbt() {
