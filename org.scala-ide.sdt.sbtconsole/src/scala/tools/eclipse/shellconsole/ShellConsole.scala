@@ -39,10 +39,7 @@ class ShellConsole(
     page
   }
   
-  override protected def dispose() {
-    super.dispose()
-  }
-
+ 
   /** Called when the Terminate action is executed. */
   def onTerminate() {
     dispose()

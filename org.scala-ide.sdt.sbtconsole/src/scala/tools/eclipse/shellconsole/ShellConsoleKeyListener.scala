@@ -41,7 +41,13 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
     getCurrentLineText(getCurrentLineInfo)
 
   private def getCurrentLineText(lineInfo: IRegion): String =
-    document.get(lineInfo.getOffset + 2, lineInfo.getLength - 2)
+    try {
+      document.get(lineInfo.getOffset + 2, lineInfo.getLength - 2)      
+    } catch {
+      case e => 
+        logger.warn("Unable to get current line.", e)
+        ""
+    }
 
   /** Move the caret to the end of the console. */
   def moveCaretToEnd() {
@@ -190,7 +196,11 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
   def replaceCurrentLineWith(contents: String) {
     val lineInfo = getCurrentLineInfo
 
-    document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, contents)
+    try {
+      document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, contents)      
+    } catch {
+      case e => logger.warn("Replacing current line: " + e.getMessage, e)
+    }
     moveCaretToEnd()
   }
 

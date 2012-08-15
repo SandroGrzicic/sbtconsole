@@ -21,6 +21,7 @@ import scala.tools.eclipse.util.SWTUtils
 import org.eclipse.core.resources.IProject
 import org.eclipse.jface.dialogs.MessageDialog
 import scala.tools.eclipse.sbtconsole.SbtRunner._
+
 /**
  * Entry point to the SBT Console.
  *
@@ -43,7 +44,7 @@ class SbtBuilder(project: IProject) extends HasLogger {
 
   /** Create and return the SbtConsole for this SbtBuilder. */
   private def createConsole(): SbtConsole = {
-    val console = new SbtConsole(consoleName, null, restartSbt, dispose)
+    val console = new SbtConsole(consoleName, null, restartSbt, terminate)
     console.setConsoleWidth(140)
     console
   }
@@ -85,27 +86,44 @@ class SbtBuilder(project: IProject) extends HasLogger {
 
     if (!projectDir.isEmpty && !sbtProcessStarted) {
       val sbtConfig = SbtConfiguration(project, sbtPath(project), sbtJavaArgs(project), projectDir)
-      val streams = ConsoleStreams(console.getInputStream(), () => console.newOutputStream())
+      val streams = ConsoleStreams(console.getInputStream, () => console.newOutputStream())
       sbtRunner ! Start(sbtConfig, streams)
     }
   }
 
   /** Restarts the SBT process and reactivates the console. */
   def restartSbt() {
+    sbtRunner ! Restart(sendExitToSbt, showConsole)
+  }
+
+  /** Terminates the SBT process. */
+  def terminateSbt() {
+    sbtRunner ! Stop(sendExitToSbt)
+  }
+  
+  /** Closes the console. */
+  def disposeConsole() {
+    console.dispose()
+    consoleManager.removeConsoles(Array(console)) 
+  }
+  
+  /** Terminates SBT if it's running and closes the console. */
+  def dispose() {
     if (sbtProcessStarted) {
-      sbtRunner ! Restart(sendExitToSbt, showConsole)
+      sbtRunner ! Stop(sendExitToSbt, disposeConsole)
     } else {
-      start()
+      disposeConsole()
     }
   }
 
-  /** Terminates the SBT process and the console. */
-  def dispose() {
-    val afterStopped = () => {
-//      console.dispose()
-//      consoleManager.removeConsoles(Array(console))
+  /** Terminates SBT if it's running or closes the console if it's stopped. */
+  def terminate() {
+    if (sbtProcessStarted) {
+      terminateSbt()
+    } else {
+      console.disposeConsole()
+      consoleManager.removeConsoles(Array(console))
     }
-    sbtRunner ! Stop(sendExitToSbt, afterStopped)
   }
 
   /** Try to cleanly close the SBT process by sending it an exit command. */

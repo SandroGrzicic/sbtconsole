@@ -9,20 +9,22 @@ import java.io.InputStream
 import java.io.File
 import scala.tools.eclipse.ScalaPlugin
 import scala.concurrent.SyncVar
+import java.io.FilterInputStream
+import java.io.Closeable
 
 object SbtRunner {
   sealed trait SbtRunnerMessage
   
   case class Start(config: SbtConfiguration, consoleStreams: ConsoleStreams) extends SbtRunnerMessage
   case class Restart(stop: () => Unit, start: () => Unit) extends SbtRunnerMessage
-  case class Stop(stop: () => Unit, afterStopped: () => Unit) extends SbtRunnerMessage
+  case class Stop(stop: () => Unit, afterStopped: () => Unit = () => Unit) extends SbtRunnerMessage
   
   case object IsStarted extends SbtRunnerMessage
   
   case class SbtConfiguration(project: IProject, pathToSbt: String, sbtJavaArgs: String, projectDir: String)
   case class ConsoleStreams(in: InputStream, newOut: () => OutputStream)
   
-  /** Time the SBT process has to clean itself up after receiving the "exit" command. */
+  /** Time the SBT process has to stop and clean up after receiving the "exit" command. */
   val SBT_EXIT_CLEANUP_TIME = 3000 // ms
 }
 
@@ -56,14 +58,14 @@ class SbtRunner extends Actor with HasLogger {
    */
   def launchSbt(config: SbtConfiguration, console: ConsoleStreams) {
     import scala.sys.process.{Process, ProcessIO, BasicIO}
-
+    
     if (sbtProcessBusy || sbtProcess.isDefined) return
     sbtProcessBusy = true
     
     sbtConfiguration = config
     consoleStreams = console
     
-    val consoleIn = console.in
+    val consoleIn = new FilterInputStream(console.in) { override def close() {} }
     val consoleOut = console.newOut()
     
     val pio = new ProcessIO(
@@ -90,10 +92,7 @@ class SbtRunner extends Actor with HasLogger {
         logger.info("SBT finished with exit code: %d".format(exitCode))
         
         if (exitCode != 0) SWTUtils.asyncExec {
-          import org.eclipse.jface.dialogs.MessageDialog
-          MessageDialog.openInformation(ScalaPlugin.getShell, "SBT launch error", """Could not launch SBT.
-
-Please check the path to sbt-launch.jar (currently %s) in SBT Console Preferences.""".format(config.pathToSbt))
+          eclipseLog.warn("SBT Console: SBT has terminated with an error. Please check the path to sbt-launch.jar in SBT Console Preferences.")
         }
       }
     } catch {
@@ -103,8 +102,10 @@ Please check the path to sbt-launch.jar (currently %s) in SBT Console Preference
   }
   
   /** 
-   * Restarts SBT. Runs the Stop function first, restarts SBT 
-   * and finally runs the Start function. 
+   * Restarts SBT.
+   *  
+   * Runs the stop function first, restarts SBT 
+   * and finally runs the start function. 
    */
   def restartSbt(stop: () => Unit, start: () => Unit) {
     val afterStopped = () => {
@@ -115,8 +116,10 @@ Please check the path to sbt-launch.jar (currently %s) in SBT Console Preference
   }
   
   /** 
-   * Stops SBT. Runs the Stop function first, then completely stops the SBT process 
-   * and finally calls the afterStopped function. 
+   * Stops SBT. 
+   * 
+   * Runs the stop function first, then completely stops the SBT process
+   * and finally calls afterStopped.
    */
   def stopSbt(stop: () => Unit, afterStopped: () => Unit) {
     
@@ -127,20 +130,22 @@ Please check the path to sbt-launch.jar (currently %s) in SBT Console Preference
       case Some(sbt) =>
         stop()
         // wait until it takes its time to exit cleanly
-        var timeWaiting = 0
-        while (sbtProcess.isDefined && timeWaiting < SBT_EXIT_CLEANUP_TIME) {
-          val delta = 100
-          Thread.sleep(delta)
-          timeWaiting += delta
+        sleepUntil(SBT_EXIT_CLEANUP_TIME) {
+          sbtProcess.isDefined
         }
         if (sbtProcess.isDefined) {
+          // safeguard in case SBT is stuck on a long-running task
+          eclipseLog.info("SBT Console: SBT took too long to exit, it has been forcibly terminated.")
           sbt.destroy()
           sbtProcess = None
         }
-      case None =>
+        // sleep a bit to make sure SBT is really closed
+        Thread.sleep(200)
+     case None =>
     }
     sbtProcessBusy = false
     afterStopped()
   }
+  
  
 }

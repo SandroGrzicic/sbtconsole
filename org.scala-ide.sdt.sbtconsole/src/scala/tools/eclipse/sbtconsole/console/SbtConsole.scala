@@ -43,10 +43,17 @@ class SbtConsole(name: String, imgDescriptor: ImageDescriptor = null, onRestartF
 
   override def getPartitioner() = partitioner
 
+  /** Disposes of this console, calling onTerminateFunc. */
   override def dispose() = {
+    onTerminateFunc()
     super.dispose()
   }
   
+  /** Disposes of this console without calling onTerminateFunc. */
+  def disposeConsole() {
+    super.dispose()
+  }
+
   override def onTerminate() {
     onTerminateFunc()
   }
