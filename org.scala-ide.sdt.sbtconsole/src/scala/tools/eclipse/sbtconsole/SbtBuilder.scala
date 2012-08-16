@@ -86,7 +86,7 @@ class SbtBuilder(project: IProject) extends HasLogger {
 
     if (!projectDir.isEmpty && !sbtProcessStarted) {
       val sbtConfig = SbtConfiguration(project, sbtPath(project), sbtJavaArgs(project), projectDir)
-      val streams = ConsoleStreams(console.getInputStream, () => console.newOutputStream())
+      val streams = ConsoleStreams(console.processInput, console.processOutput)
       sbtRunner ! Start(sbtConfig, streams)
     }
   }
@@ -130,7 +130,9 @@ class SbtBuilder(project: IProject) extends HasLogger {
   /** Try to cleanly close the SBT process by sending it an exit command. */
   private def sendExitToSbt() {
     SWTUtils asyncExec {
-      console.getInputStream().appendData("\nexit\n")
+      val writer = console.processWriter
+      writer.write("\nexit\n")
+      writer.flush()
     }
   }
 

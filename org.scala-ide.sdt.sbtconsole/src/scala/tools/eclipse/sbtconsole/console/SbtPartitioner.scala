@@ -21,10 +21,10 @@ import org.eclipse.ui.internal.console.IOConsolePartition
 
 class SbtPartitioner(console: SbtConsole) extends ShellConsolePartitioner(console) {
   
-  lazy final val fgColor    = Display.getDefault.getSystemColor(SWT.COLOR_BLACK)
-  lazy final val bgColor    = Display.getDefault.getSystemColor(SWT.COLOR_WHITE)
-  lazy final val infoColor  = Display.getDefault.getSystemColor(SWT.COLOR_DARK_MAGENTA)
-  lazy final val errorColor = Display.getDefault.getSystemColor(SWT.COLOR_RED)
+  lazy final val fgColor      = Display.getDefault.getSystemColor(SWT.COLOR_BLACK)
+  lazy final val bgColor      = Display.getDefault.getSystemColor(SWT.COLOR_WHITE)
+  lazy final val infoColor    = Display.getDefault.getSystemColor(SWT.COLOR_DARK_MAGENTA)
+  lazy final val errorColor   = Display.getDefault.getSystemColor(SWT.COLOR_RED)
   lazy final val successColor = Display.getDefault.getSystemColor(SWT.COLOR_DARK_GREEN)
   
   lazy final val defaultStyle = (fgColor, bgColor)

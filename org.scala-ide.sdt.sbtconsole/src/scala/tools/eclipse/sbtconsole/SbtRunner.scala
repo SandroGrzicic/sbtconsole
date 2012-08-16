@@ -15,7 +15,7 @@ import java.io.Closeable
 object SbtRunner {
   sealed trait SbtRunnerMessage
   
-  case class Start(config: SbtConfiguration, consoleStreams: ConsoleStreams) extends SbtRunnerMessage
+  case class Start(config: SbtConfiguration, streams: ConsoleStreams) extends SbtRunnerMessage
   case class Restart(stop: () => Unit, start: () => Unit) extends SbtRunnerMessage
   case class Stop(stop: () => Unit, afterStopped: () => Unit = () => Unit) extends SbtRunnerMessage
   
@@ -24,7 +24,7 @@ object SbtRunner {
   case object Shutdown extends SbtRunnerMessage
   
   case class SbtConfiguration(project: IProject, pathToSbt: String, sbtJavaArgs: String, projectDir: String)
-  case class ConsoleStreams(in: InputStream, newOut: () => OutputStream)
+  case class ConsoleStreams(in: InputStream, out: OutputStream)
   
   /** Time the SBT process has to stop and clean up after receiving the "exit" command. */
   val SBT_EXIT_CLEANUP_TIME = 3000 // ms
@@ -37,17 +37,20 @@ class SbtRunner extends Actor with HasLogger {
   import SbtRunner._
   import scala.sys.process.Process
   
+  /** Our (only) process. */
   @volatile private var sbtProcess: Option[Process] = None
-  
+  /** Whether we are currently busy with the process. */
   @volatile private var sbtProcessBusy = false
   
+  /** Currently used SbtConfiguration. */
   @volatile private var sbtConfiguration: SbtConfiguration = _
+  /** Currently used ConsoleStreams. */
   @volatile private var consoleStreams: ConsoleStreams = _
  
   def act() {
     loop {
       react {
-        case s: Start   => launchSbt(s.config, s.consoleStreams)
+        case s: Start   => launchSbt(s.config, s.streams)
         case r: Restart => restartSbt(r.stop, r.start)
         case s: Stop    => stopSbt(s.stop, s.afterStopped)
         case IsStarted  => reply(sbtProcess.isDefined)
@@ -59,24 +62,23 @@ class SbtRunner extends Actor with HasLogger {
   }
   
   /**
-   * Launch the SBT process and route input and output through the Console object.
+   * Launch the SBT process and route input and output through the provided streams.
    */
-  def launchSbt(config: SbtConfiguration, console: ConsoleStreams) {
+  def launchSbt(config: SbtConfiguration, streams: ConsoleStreams) {
     import scala.sys.process.{Process, ProcessIO, BasicIO}
     
     if (sbtProcessBusy || sbtProcess.isDefined) return
     sbtProcessBusy = true
     
     sbtConfiguration = config
-    consoleStreams = console
+    consoleStreams = streams
     
-    val consoleIn = new FilterInputStream(console.in) { override def close() {} }
-    val consoleOut = console.newOut()
+    def uncloseableInputStream(in: InputStream) = new FilterInputStream(in) { override def close() {} }
     
     val pio = new ProcessIO(
-      sbtIn  => BasicIO.transferFully(consoleIn, sbtIn),
-      sbtOut => BasicIO.transferFully(sbtOut, consoleOut),
-      sbtErr => BasicIO.transferFully(sbtErr, consoleOut),
+      sbtIn  => BasicIO.transferFully(uncloseableInputStream(streams.in), sbtIn),
+      sbtOut => BasicIO.transferFully(sbtOut, streams.out),
+      sbtErr => BasicIO.transferFully(sbtErr, streams.out),
       false
     )
 
@@ -93,7 +95,6 @@ class SbtRunner extends Actor with HasLogger {
         val exitCode = sbtProcess.get.exitValue() // blocks
         // process has terminated
         sbtProcess = None
-        consoleOut.close()
         logger.info("SBT finished with exit code: %d".format(exitCode))
         
         if (exitCode != 0) SWTUtils.asyncExec {

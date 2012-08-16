@@ -14,14 +14,15 @@ import org.eclipse.jface.text.ITextListener
 import org.eclipse.jface.text.IRegion
 import scala.tools.eclipse.sbtconsole.SWTUtils2
 import org.eclipse.swt.SWTException
+import scala.sys.process.BasicIO
 
 /**
  * ShellConsole KeyListener.
  *
- * Listens to traverse events in order to support tab completion and console history.
+ * Listens to key and traverse events in order to support tab completion and console history.
  *
  */
-class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
+class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
     extends TraverseListener
     with KeyListener
     with HasLogger {
@@ -31,23 +32,19 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
   /** Current line (position) in history. */
   var historyLine = 0
 
-  private lazy val document = page.getViewer.getDocument
-  private lazy val textWidget = page.getViewer.getTextWidget
+  private val currentLine = StringBuilder.newBuilder
+  private var currentLineProcess: Option[String] = None
 
   private def getCurrentLineInfo: IRegion =
     document.getLineInformation(document.getNumberOfLines - 1)
 
-  private def getCurrentLineText: String =
-    getCurrentLineText(getCurrentLineInfo)
+  private var transferThread = console.newProcessToConsoleTransferThread()
 
-  private def getCurrentLineText(lineInfo: IRegion): String =
-    try {
-      document.get(lineInfo.getOffset + 2, lineInfo.getLength - 2)      
-    } catch {
-      case e => 
-        logger.warn("Unable to get current line.", e)
-        ""
-    }
+  private lazy val document = page.getViewer.getDocument
+  private lazy val textWidget = page.getViewer.getTextWidget
+
+  /** Writes to the process. */
+  private val processWriter = console.processWriter
 
   /** Move the caret to the end of the console. */
   def moveCaretToEnd() {
@@ -77,14 +74,16 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
         disableDefaultAction(e)
         completeCurrentInput()
 
-      case SWT.ARROW_LEFT => // disallow moving before the location of the command line prompt
+      case SWT.ARROW_LEFT =>
         val lineInfo = getCurrentLineInfo
         if (textWidget.getCaretOffset < lineInfo.getOffset + 3) {
+          // disallow moving before the location of the command line prompt
           disableDefaultAction(e)
         }
-      case SWT.ARROW_RIGHT => // in case caret is behind the location of the command line prompt
+      case SWT.ARROW_RIGHT =>
         val lineInfo = getCurrentLineInfo
         if (textWidget.getCaretOffset < lineInfo.getOffset + 2) {
+          // caret is behind the location of the command line prompt
           disableDefaultAction(e)
           textWidget.setCaretOffset(lineInfo.getOffset + 2)
         }
@@ -98,81 +97,79 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
         showNextHistoryInput()
 
       case SWT.CR | SWT.KEYPAD_CR =>
-        // intercepted for cleaner input; only accept characters at the current line 
-        // instead of anywhere inside the console
         disableDefaultAction(e)
-
         executeCurrentCommand()
         moveCaretToEnd()
-        
+
       case _ => // ignored
     }
   }
 
-  /** Executes the command in the current line and adds it to history. */
+  /** Executes the command in the current line, adds it to history and clears the current line. */
   def executeCurrentCommand() {
-    val currentLine = getCurrentLineText
-    try {
-      replaceCurrentLineWith("")
-      console.getInputStream.appendData(currentLine + "\n")
-    } catch {
-      case _ =>
-//        lastCompletedLine match {
-//          case Some(line) if line.length > 0 && line.length > currentLine.length =>
-//            console.getInputStream.appendData(currentLine.substring(line.length) + "\n")
-//          case _ =>
-        console.getInputStream.appendData("\n")
-//        }
-//        lastCompletedLine = None
-    }
+    
+    val line = currentLine.mkString
 
-    addLineToHistory(currentLine)
+    processWriter.write(line + "\n")
+    processWriter.flush()
+    
+    replaceCurrentLineWith("")
+    
+    addLineToHistory(line)
+    
+    currentLine.clear()
   }
-
-  var lastCompletedLine: Option[String] = None
 
   /** Autocompletes the current input. */
   def completeCurrentInput() {
     val lineInfo = getCurrentLineInfo
-    val typedText = getCurrentLineText(lineInfo)
+    val line = currentLine.mkString
 
-    //    eclipseLog.info(typedText)
     try {
-      //      eclipseLog.info(document.get())
-      document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, "")
-      console.getInputStream.appendData(typedText + "\t")
-      lastCompletedLine = Some(typedText)
+      // start buffering process output
+      transferThread.writeTarget = BufferedTransferThread.Buffer
+
+      processWriter.write(line + "\t")
+      processWriter.flush()
+
+      // wait for the process to print out the completion (TODO: optimize somehow?)
+      Thread.sleep(100)
+
+      val contentBuffer = transferThread.contentBuffer.toString()
+      if (contentBuffer.count('\r' ==) == 1) {
+        // single completion - complete current line
+        val completion = contentBuffer.dropWhile('\r' !=).drop(3)
+
+        // erase completion from process shell
+        val backspaces = Array.fill(completion.length)('\b')
+        processWriter.write(backspaces)
+        processWriter.flush()
+
+//        eclipseLog.info("Completion: " + completion + " - currentLine: " + currentLine.toString)
+        replaceCurrentLineWith(completion)
+      
+      } else {
+        // multiple completions - transfer them to the console
+
+        // TODO: remove last line from output using transferThread.contentBufferLimit
+        replaceCurrentLineWith("")
+        transferThread.copyToOutput()
+      }
+
+      // clear content buffer and resume outputting process output to console
+      transferThread.contentBuffer.setLength(0)
+      transferThread.writeTarget = BufferedTransferThread.Output
+
     } catch {
-//      case e @ (_: NullPointerException | _: BadLocationException) =>
-//        eclipseLog.info(typedText + " - (" + lineInfo.getOffset + ", " + lineInfo.getLength + ") - " + e.getMessage(), e)
-//        lastCompletedLine match {
-//          case Some(line) if line.length > 0 && line.length > typedText.length =>
-//            var typedTextDifference = typedText.substring(line.length)
-//            console.getInputStream.appendData(typedTextDifference + "\t")
-//            lastCompletedLine = null
-//          case _ =>
-//        }
-      case _ =>
-//        try {
-//          eclipseLog.info(getCurrentLineText(lineInfo))
-//          document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, "")
-//        } catch {
-//          case e =>
-//            eclipseLog.info(typedText + " - (" + lineInfo.getOffset + ", " + lineInfo.getLength + ") - " + e.getMessage(), e)
-//            eclipseLog.info(document.getLineLength(document.getNumberOfLines() - 1) + " - " + document.getLineLength(document.getNumberOfLines() - 2))
-//        }
-        console.getInputStream.appendData("\t")
+      case e =>
+        eclipseLog.warn("Exception while attempting autocomplete.", e)
     }
-    moveCaretToEndAsync()
+    moveCaretToEnd()
   }
 
-  def addLineToHistory(currentLine: String = getCurrentLineText) {
-    try {
-      history :+= currentLine
-      historyLine = history.length
-    } catch {
-      case e: BadLocationException => logger.error("Bad location while fetching current line", e)
-    }
+  def addLineToHistory(currentLine: String) {
+    history :+= currentLine
+    historyLine = history.length
   }
 
   def showNextHistoryInput() {
@@ -197,34 +194,25 @@ class ShellConsoleKeyListener(console: IOConsole, page: IOConsolePage)
     val lineInfo = getCurrentLineInfo
 
     try {
-      document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, contents)      
+      document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, contents)
     } catch {
-      case e => logger.warn("Replacing current line: " + e.getMessage, e)
+      case e =>
+        eclipseLog.info("Exception while replacing current line with " + contents + " - " + e.getMessage, e)
     }
+    currentLine.replace(0, currentLine.length, contents)
     moveCaretToEnd()
   }
 
-  def keyReleased(e: KeyEvent) {
-    // TODO: proper backspace support for autocomplete
-
-    //    e.keyCode match {
-    //      case SWT.CR | SWT.KEYPAD_CR =>
-    //        moveCaretToEnd()
-    //      case SWT.BS =>
-    //        val lineInfo = getCurrentLine
-    //        try {
-    //          val userInput = document.get(lineInfo.getOffset + 2, lineInfo.getLength - 3)
-    //          if (lineInfo.getOffset >= 0) {
-    //            document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, userInput)
-    //          }
-    //        } catch {
-    //          case e: BadLocationException            => eclipseLog.info("Bad location while backspacing", e)
-    //          case e: StringIndexOutOfBoundsException => eclipseLog.info("Bad index while backspacing", e)  
-    //        }
-    //      case _ => // ignored
-    //    }
+  def keyPressed(e: KeyEvent) {
+    if (e.keyCode == SWT.BS) {
+      if (currentLine.length > 0) {
+        currentLine.length -= 1
+      }
+    } else if (e.keyCode < 65535) {
+      currentLine += e.character
+    }
   }
 
-  def keyPressed(e: KeyEvent) {}
+  def keyReleased(e: KeyEvent) {}
 
 }

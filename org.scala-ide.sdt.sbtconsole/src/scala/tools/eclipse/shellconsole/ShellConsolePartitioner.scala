@@ -16,7 +16,7 @@ class ShellConsolePartitioner(inputStream: IOConsoleInputStream, console: ShellC
 
   def this(inputStream: IOConsoleInputStream) { this(inputStream, null) }
   
-  def this(console: ShellConsole) { this(console.getInputStream(), console) }
+  def this(console: ShellConsole) { this(console.getInputStream, console) }
   
   override def streamAppended(stream: IOConsoleOutputStream, string: String) {
     super.streamAppended(stream, string)
