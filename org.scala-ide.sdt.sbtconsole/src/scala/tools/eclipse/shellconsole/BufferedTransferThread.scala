@@ -8,15 +8,23 @@ import java.io.IOException
 /**
  * Transfers data from the input to the output;
  * holds data in a temporary buffer if a flag is toggled.
+ * 
+ * The data can be read by switching the `writeTarget` to `Buffer` and then
+ * reading from the `contentBuffer` which should be cleared after reading.
+ * After that, normal behavior can be resumed by setting the `writeTarget`
+ * to `Output`.
+ * 
+ * The currently buffered output can be copied to the output stream by using
+ * `copyToOutput`; the copied length can be limited using `contentBufferLimit`. 
+ * 
+ *  
  */
-class BufferedTransferThread(in: InputStream, out: IOConsoleOutputStream, charset: String) extends Thread {
+class BufferedTransferThread(in: InputStream, out: IOConsoleOutputStream, charset: String = "UTF-8") extends Thread {
   import scala.sys.process.BasicIO
   import BufferedTransferThread._
 
   /** Buffer holding the current content. Thread-safe. */
   val contentBuffer = new StringBuffer()
-  /** How much of the content buffer to use when copying it to the output stream. */
-  var contentBufferLimit = -1
 
   /**
    * Whether to write process output to the output stream
@@ -24,11 +32,12 @@ class BufferedTransferThread(in: InputStream, out: IOConsoleOutputStream, charse
    */
   @volatile var writeTarget: Target = Output
 
-  /** Copy the currently buffered input characters to the output stream up to `contentBufferLimit`. */
-  def copyToOutput() {
-    val limit = if (contentBufferLimit == -1) contentBuffer.length else contentBufferLimit
-    out.write(contentBuffer.toString.substring(0, limit))
-    contentBufferLimit = -1
+  /** 
+   * Copy the currently buffered input characters to the output stream, 
+   * optionally up to `contentBufferLimit`. 
+   */
+  def copyToOutput(contentBufferLimit: Int = contentBuffer.length) {
+    out.write(contentBuffer.toString.substring(0, contentBufferLimit))
     try { out.flush() } catch { case _: IOException => }
   }
 
