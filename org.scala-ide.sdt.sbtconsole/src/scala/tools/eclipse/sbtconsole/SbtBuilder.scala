@@ -21,6 +21,7 @@ import scala.tools.eclipse.util.SWTUtils
 import org.eclipse.core.resources.IProject
 import org.eclipse.jface.dialogs.MessageDialog
 import scala.tools.eclipse.sbtconsole.SbtRunner._
+import org.eclipse.jdt.core.JavaCore
 
 /**
  * Entry point to the SBT Console.
@@ -85,7 +86,7 @@ class SbtBuilder(project: IProject) extends HasLogger {
     import Preferences._
 
     if (!projectDir.isEmpty && !sbtProcessStarted) {
-      val sbtConfig = SbtConfiguration(project, sbtPath(project), sbtJavaArgs(project), projectDir)
+      val sbtConfig = SbtConfiguration(JavaCore.create(project), sbtPath(project), sbtJavaArgs(project), projectDir)
       val streams = ConsoleStreams(console.processInput, console.processOutput)
       sbtRunner ! Start(sbtConfig, streams)
     }

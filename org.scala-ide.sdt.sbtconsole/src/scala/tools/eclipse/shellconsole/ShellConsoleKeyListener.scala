@@ -133,6 +133,7 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
       processWriter.flush()
 
       // wait for the process to print out the completion (TODO: optimize somehow?)
+      // because it's not possible to find out the end of the completion
       Thread.sleep(100)
 
       val contentBuffer = transferThread.contentBuffer.toString()

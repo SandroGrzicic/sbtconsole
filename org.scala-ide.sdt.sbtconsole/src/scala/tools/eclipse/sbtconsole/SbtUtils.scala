@@ -19,19 +19,19 @@ object SbtUtils {
   val USER_HOME = System.getProperty("user.home") + SEPARATOR
   val SBT_PROJECT_FOLDER = "project/"
   val SBT_LAUNCH_JAR = "sbt-launch.jar"
-    
+
   private var sbtClasspaths = Map.empty[String, List[IClasspathEntry]]
 
   /**
-   * Returns the SBT path, SBT version and SBT Scala version. 
+   * Returns the SBT path, SBT version and SBT Scala version.
    * Uses empty strings in case of unknown information or exceptions.
    * Use the specific methods in order to get specific information.
    */
   def getSbtInfo(): SbtInfo = {
     val path = getSbtPath()
-    val version = path map getSbtVersion getOrElse Left() fold(_ => "", identity)
+    val version = path map getSbtVersion getOrElse Left() fold (_ => "", identity)
     val scalaVersion = sbtToScalaVersion(version)
-    
+
     SbtInfo(path getOrElse "", version, scalaVersion)
   }
 
@@ -49,40 +49,40 @@ object SbtUtils {
         jar.close()
     }
   }
-  
+
   /** Maps SBT versions to Scala versions. */
   def sbtToScalaVersion(sbtVersion: String): String = sbtVersion match {
     case "0.11.2"       => "2.9.1"
     case "0.11.3"       => "2.9.2"
     case s if s.isEmpty => ""
-    case _        => "2.9.2"
+    case _              => "2.9.2"
   }
-  
+
   def getSbtClasspathFor(sbtVersion: String): List[IClasspathEntry] = {
     if (!sbtClasspaths.contains(sbtVersion)) {
-      
-      val scalaPath = "scala-" + sbtToScalaVersion(sbtVersion) 
+
+      val scalaPath = "scala-" + sbtToScalaVersion(sbtVersion)
       val sbtClasspath =
         USER_HOME +
-        SBT_LIBRARY_LOCATION_PREFIX + scalaPath + SEPARATOR +
-        SBT_LIBRARY_LOCATION_SUFFIX + sbtVersion + SEPARATOR
-      
+          SBT_LIBRARY_LOCATION_PREFIX + scalaPath + SEPARATOR +
+          SBT_LIBRARY_LOCATION_SUFFIX + sbtVersion + SEPARATOR
+
       val classpath = MutableList.empty[IClasspathEntry]
-      
+
       val dir = new File(sbtClasspath)
       val jars = dir.list(new FilenameFilter() {
         def accept(dir: File, name: String) = name.endsWith(".jar")
       })
       jars foreach { jar =>
-        classpath += JavaCore.newLibraryEntry(new Path(sbtClasspath + jar), null, null)        
-      } 
-      
+        classpath += JavaCore.newLibraryEntry(new Path(sbtClasspath + jar), null, null)
+      }
+
       sbtClasspaths += sbtVersion -> classpath.toList
     }
-    
+
     sbtClasspaths(sbtVersion)
   }
- 
+
   /** Tries to find the SBT location based on the user's OS. */
   def getSbtPath(): Option[String] = {
     sys.props("os.name") match {
@@ -95,19 +95,36 @@ object SbtUtils {
           if (sys.env.contains("ProgramFiles(x86)"))
             possibleLocations :+= new File(sys.env("ProgramFiles(x86)") + SEPARATOR + "sbt" + SEPARATOR + SBT_LAUNCH_JAR)
         } else {
-          // linux / mac, most likely
+          // linux / mac
           possibleLocations :+= new File("~" + SEPARATOR + "bin" + SEPARATOR + SBT_LAUNCH_JAR)
           possibleLocations :+= new File("~" + SEPARATOR + "bin" + SEPARATOR + "sbt" + SEPARATOR + SBT_LAUNCH_JAR)
         }
-        
+
         possibleLocations foreach { file =>
           if (file.exists())
             return Some(file.toString)
         }
-        
+
       case _ =>
     }
-    
+
     None
+  }
+
+  /** Returns the JRE binary for the current system, given a valid Java VM location. */
+  def getJavaBinary(vmRoot: File): Option[File] = {
+    val vmPath = vmRoot.toString
+    sys.props("os.name") match {
+      case os: String =>
+        val binaryName = if (os.toLowerCase.contains("windows")) {
+          // windows
+          "java.exe"
+        } else {
+          // linux / mac
+          "java"
+        }
+        Some(new File(vmRoot.toString + SEPARATOR + "bin" + SEPARATOR + binaryName))
+      case _ => None
+    }
   }
 }

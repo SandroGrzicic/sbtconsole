@@ -11,6 +11,8 @@ import scala.tools.eclipse.ScalaPlugin
 import scala.concurrent.SyncVar
 import java.io.FilterInputStream
 import java.io.Closeable
+import org.eclipse.jdt.launching.JavaRuntime
+import org.eclipse.jdt.core.IJavaProject
 
 object SbtRunner {
   sealed trait SbtRunnerMessage
@@ -23,7 +25,7 @@ object SbtRunner {
   
   case object Shutdown extends SbtRunnerMessage
   
-  case class SbtConfiguration(project: IProject, pathToSbt: String, sbtJavaArgs: String, projectDir: String)
+  case class SbtConfiguration(project: IJavaProject, pathToSbt: String, sbtJavaArgs: String, projectDir: String)
   case class ConsoleStreams(in: InputStream, out: OutputStream)
   
   /** Time the SBT process has to stop and clean up after receiving the "exit" command. */
@@ -83,7 +85,19 @@ class SbtRunner extends Actor with HasLogger {
     )
 
     try {
-      val javaCmd = "java" :: config.sbtJavaArgs.split(' ').map(_.trim).toList :::
+      // get Java binary location for the current platform
+      val javaLocation = for { 
+        vmInstall <- Option(JavaRuntime.getVMInstall(config.project))
+        vmInstallLocation <- Option(vmInstall.getInstallLocation) 
+        binary <- SbtUtils.getJavaBinary(vmInstallLocation)
+      } yield binary
+      
+      if (javaLocation.isEmpty) {
+        eclipseLog.error("Error launching SBT: Cannot find a valid Java Runtime Environment binary.")
+        return
+      }
+
+      val javaCmd = javaLocation.get.toString :: config.sbtJavaArgs.split(' ').map(_.trim).toList :::
         List("-jar", "-Dsbt.log.noformat=true", "-Djline.WindowsTerminal.directConsole=false", config.pathToSbt)
       logger.info("Starting SBT in %s (%s)".format(config.projectDir, javaCmd))
       val builder = Process(javaCmd.toArray, Some(new File(config.projectDir)))
