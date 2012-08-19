@@ -12,9 +12,10 @@ Useful information can be found on the [project wiki](https://github.com/SandroG
 Installing in Scala IDE:
 =======================
 
-Eclipse installation should be performed using the Scala IDE Ecosystem. 
+Nightly update sites:
 
-Eclipse update site: http://download.scala-ide.org/ecosystem/dev-master-2.9/site/
+* Scala IDE 2.1.x, Scala 2.9: http://scala-ide.dreamhosters.com/nightly-update-sbtconsole-scalaide21-29/site/
+* Scala IDE 2.1.x, Scala 2.10: http://scala-ide.dreamhosters.com/nightly-update-sbtconsole-scalaide21-210/site/
 
 Scala IDE 2.1 is required; 2.0 is not supported.
 

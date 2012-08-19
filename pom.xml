@@ -47,23 +47,13 @@
     <version.suffix>2_09</version.suffix>
     <scala.version.short>2.9</scala.version.short>
     <version.tag>local</version.tag>
-    <repo.scala-ide>${repo.scala-ide.root}/releases-29/stable/tycho-site</repo.scala-ide>
+    <repo.scala-ide>${repo.scala-ide.root}/nightly-update-master-29x</repo.scala-ide>
     <junit.version>4.10</junit.version>
    </properties>
 
   <profiles>
     <profile>
-      <!-- this is the default profile, using the stable builds-->
-      <id>scala-ide-2.0-scala-2.9</id>
-    </profile>
-    <profile>
-      <!-- 2.0.x Scala IDE with Scala 2.9 -->
-      <id>scala-ide-2.0.x-scala-2.9</id>
-      <properties>
-        <repo.scala-ide>${repo.scala-ide.root}/nightly-update-2-0-x-29x</repo.scala-ide>
-      </properties>
-    </profile>
-    <profile>
+      <!-- default profile -->
       <!-- nightly Scala IDE with Scala 2.9 -->
       <id>scala-ide-master-scala-2.9</id>
       <properties>
