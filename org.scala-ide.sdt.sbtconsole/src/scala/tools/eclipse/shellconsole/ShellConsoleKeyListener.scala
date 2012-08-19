@@ -12,7 +12,6 @@ import org.eclipse.jface.text.BadLocationException
 import org.eclipse.jface.text.TextEvent
 import org.eclipse.jface.text.ITextListener
 import org.eclipse.jface.text.IRegion
-import scala.tools.eclipse.sbtconsole.SWTUtils2
 import org.eclipse.swt.SWTException
 import scala.sys.process.BasicIO
 
@@ -27,13 +26,15 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
     with KeyListener
     with HasLogger {
 
+  /** The symbol which represents a new line in the process output. */
+  var newlineSymbol = '\r'
+    
   /** Holds user input (history). */
   var history = IndexedSeq[String]()
   /** Current line (position) in history. */
   var historyLine = 0
 
   private val currentLine = StringBuilder.newBuilder
-  private var currentLineProcess: Option[String] = None
 
   private def getCurrentLineInfo: IRegion =
     document.getLineInformation(document.getNumberOfLines - 1)
@@ -42,9 +43,6 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
 
   private lazy val document = page.getViewer.getDocument
   private lazy val textWidget = page.getViewer.getTextWidget
-
-  /** Writes to the process. */
-  private val processWriter = console.processWriter
 
   /** Move the caret to the end of the console. */
   def moveCaretToEnd() {
@@ -55,7 +53,7 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
 
   /** Move the caret to the end of the console after `after` milliseconds. */
   def moveCaretToEndAsync(after: Long = 200) {
-    SWTUtils2.asyncExec(after) {
+    ThreadUtils.asyncExec(after) {
       if (page != null) {
         moveCaretToEnd()
       }
@@ -110,8 +108,8 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
     
     val line = currentLine.mkString
 
-    processWriter.write(line + "\n")
-    processWriter.flush()
+    console.processWriter.write(line + "\n")
+    console.processWriter.flush()
     
     replaceCurrentLineWith("")
     
@@ -129,43 +127,63 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
       // start buffering process output
       transferThread.writeTarget = BufferedTransferThread.Buffer
 
-      processWriter.write(line + "\t")
-      processWriter.flush()
+      // send the current line to the process for autocompletion
+      console.processWriter.write(line + "\t")
+      console.processWriter.flush()
 
-      // wait for the process to print out the completion (TODO: optimize somehow?)
+      // wait for the process to print out the completion
       // because it's not possible to find out the end of the completion
       Thread.sleep(100)
-
-      val contentBuffer = transferThread.contentBuffer.toString()
-      if (contentBuffer.count('\r' ==) == 1) {
+      // make sure we actually get some output from the process
+      ThreadUtils.sleepWhile(timeout = 1000, sleepSegments = 10) {
+        transferThread.contentBuffer.length == 0
+      }
+      
+      val contentBuffer = transferThread.contentBuffer.toString
+      
+      if (contentBuffer.count(newlineSymbol ==) == 1) {
         // single completion - complete current line
-        val completion = contentBuffer.dropWhile('\r' !=).drop(3)
+        val completion = contentBuffer.dropWhile(newlineSymbol !=).drop(3)
 
         // erase completion from process shell
         val backspaces = Array.fill(completion.length)('\b')
-        processWriter.write(backspaces)
-        processWriter.flush()
-
-//        eclipseLog.info("Completion: " + completion + " - currentLine: " + currentLine.toString)
+        console.processWriter.write(backspaces)
+        console.processWriter.flush()
         replaceCurrentLineWith(completion)
-      
+        
+        // clear content buffer and resume outputting process output to console
+        transferThread.contentBuffer.setLength(0)
+        transferThread.writeTarget = BufferedTransferThread.Output
+        
+        moveCaretToEnd()
+        
       } else {
         // multiple completions - transfer them to the console
 
-        // TODO: remove last line from output using transferThread.contentBufferLimit
+        // erase completion from process shell
+        val backspaces = Array.fill(line.length)('\b')
+        console.processWriter.write(backspaces)
+        console.processWriter.flush()
         replaceCurrentLineWith("")
-        transferThread.copyToOutput()
+        
+        // remove last line from output by using the copyToOutput limit
+        val contentBufferCopyLimit = contentBuffer.lastIndexOf(newlineSymbol) + 4
+        // copy the current content buffer to the console and clear it
+        transferThread.copyToOutput(contentBufferCopyLimit, clearBuffer = true)
+        // resume outputting process output to console
+        transferThread.writeTarget = BufferedTransferThread.Output
+
+        // wait until the console has been properly filled with the output
+        ThreadUtils.asyncExec(200) {
+          // set the current line to be the previously typed line
+          replaceCurrentLineWith(line)
+          moveCaretToEnd()
+        }
       }
-
-      // clear content buffer and resume outputting process output to console
-      transferThread.contentBuffer.setLength(0)
-      transferThread.writeTarget = BufferedTransferThread.Output
-
     } catch {
       case e =>
-        eclipseLog.warn("Exception while attempting autocomplete.", e)
+        logger.warn("Exception while attempting autocomplete of " + line + ": e.getMessage", e)
     }
-    moveCaretToEnd()
   }
 
   def addLineToHistory(currentLine: String) {
@@ -198,7 +216,7 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
       document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, contents)
     } catch {
       case e =>
-        eclipseLog.info("Exception while replacing current line with " + contents + " - " + e.getMessage, e)
+        logger.warn("Exception while replacing current line with " + contents + " - " + e.getMessage, e)
     }
     currentLine.replace(0, currentLine.length, contents)
     moveCaretToEnd()

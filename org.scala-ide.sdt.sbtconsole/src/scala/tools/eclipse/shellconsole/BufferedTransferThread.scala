@@ -15,11 +15,17 @@ import java.io.IOException
  * to `Output`.
  * 
  * The currently buffered output can be copied to the output stream by using
- * `copyToOutput`; the copied length can be limited using `contentBufferLimit`. 
+ * `copyToOutput`; the copied length can be limited using `contentBufferLimit`.
  * 
+ *  The transfer terminates when the input stream has no more input, or the 
+ *  output stream is not accepting any more input (throws an IOException).
  *  
  */
-class BufferedTransferThread(in: InputStream, out: IOConsoleOutputStream, charset: String = "UTF-8") extends Thread {
+class BufferedTransferThread(
+    in: InputStream, 
+    out: IOConsoleOutputStream, 
+    charset: String = "UTF-8"
+) extends Thread {
   import scala.sys.process.BasicIO
   import BufferedTransferThread._
 
@@ -33,12 +39,17 @@ class BufferedTransferThread(in: InputStream, out: IOConsoleOutputStream, charse
   @volatile var writeTarget: Target = Output
 
   /** 
-   * Copy the currently buffered input characters to the output stream, 
-   * optionally up to `contentBufferLimit`. 
+   * Copies the currently buffered input characters to the output stream, 
+   * optionally up to `contentBufferLimit`.
+   * Clears the buffer when it's done unless otherwise specified.
    */
-  def copyToOutput(contentBufferLimit: Int = contentBuffer.length) {
+  def copyToOutput(contentBufferLimit: Int = contentBuffer.length, clearBuffer: Boolean = true) {
     out.write(contentBuffer.toString.substring(0, contentBufferLimit))
     try { out.flush() } catch { case _: IOException => }
+    
+    if (clearBuffer) {
+      contentBuffer.setLength(0)      
+    }
   }
 
   override def run() {
@@ -49,10 +60,15 @@ class BufferedTransferThread(in: InputStream, out: IOConsoleOutputStream, charse
       byteCount = in.read(streamBuffer)
       if (byteCount > 0) {
         if (writeTarget == Output) {
-          out.write(streamBuffer, 0, byteCount)
-          // flush() will throw an exception once the process has terminated
-          val available = try { out.flush(); true } catch { case _: IOException => false }
-          if (available) loop()
+          // an exception will be thrown once the process has terminated
+          val outputStreamOpen = try {
+            out.write(streamBuffer, 0, byteCount)
+            out.flush()
+            true
+          } catch {
+            case _: IOException => false
+          }
+          if (outputStreamOpen) loop()
         } else {
           contentBuffer.append(new String(streamBuffer, 0, byteCount, charset))
           loop()

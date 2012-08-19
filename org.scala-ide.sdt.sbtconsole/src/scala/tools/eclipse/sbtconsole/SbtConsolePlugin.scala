@@ -39,7 +39,7 @@ class SbtConsolePlugin extends AbstractUIPlugin with IStartup with HasLogger {
       }
     } else {
       if (Preferences.sbtAutostart) {
-        SWTUtils asyncExec {
+        SWTUtils.asyncExec {
           for (window <- Workbench.getInstance.getWorkbenchWindows()) {
             val action = new ShowSbtConsoleAction()
             action.init(window)

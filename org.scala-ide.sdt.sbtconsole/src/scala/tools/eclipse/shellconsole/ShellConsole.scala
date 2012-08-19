@@ -7,7 +7,6 @@ import org.eclipse.ui.console.IOConsole
 import scala.tools.eclipse.logging.HasLogger
 import scala.tools.eclipse.util.SWTUtils
 import org.eclipse.swt.widgets.Display
-import scala.tools.eclipse.sbtconsole.SWTUtils2
 import java.io.PipedInputStream
 import java.io.PipedOutputStream
 import java.io.OutputStreamWriter

@@ -13,6 +13,7 @@ import java.io.FilterInputStream
 import java.io.Closeable
 import org.eclipse.jdt.launching.JavaRuntime
 import org.eclipse.jdt.core.IJavaProject
+import scala.tools.eclipse.shellconsole.ThreadUtils
 
 object SbtRunner {
   sealed trait SbtRunnerMessage
@@ -150,7 +151,7 @@ class SbtRunner extends Actor with HasLogger {
       case Some(sbt) =>
         stop()
         // wait until it takes its time to exit cleanly
-        sleepUntil(SBT_EXIT_CLEANUP_TIME) {
+        ThreadUtils.sleepWhile(SBT_EXIT_CLEANUP_TIME) {
           sbtProcess.isDefined
         }
         if (sbtProcess.isDefined) {
