@@ -133,10 +133,15 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
 
       // wait for the process to print out the completion
       // because it's not possible to find out the end of the completion
-      Thread.sleep(100)
+      Thread.sleep(200)
       // make sure we actually get some output from the process
-      ThreadUtils.sleepWhile(timeout = 1000, sleepSegments = 10) {
+      ThreadUtils.sleepWhile(timeout = 1500, sleepSegments = 5) {
         transferThread.contentBuffer.length == 0
+      }
+      if (transferThread.contentBuffer.length == 0) {
+        eclipseLog.warn("SBT Console: SBT took a very long time to autocomplete input; please try again.")
+        transferThread.writeTarget = BufferedTransferThread.Output
+        return
       }
       
       val contentBuffer = transferThread.contentBuffer.toString
@@ -181,7 +186,7 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
         }
       }
     } catch {
-      case e =>
+      case e: Throwable =>
         logger.warn("Exception while attempting autocomplete of " + line + ": e.getMessage", e)
     }
   }
@@ -215,7 +220,7 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
     try {
       document.replace(lineInfo.getOffset + 2, lineInfo.getLength - 2, contents)
     } catch {
-      case e =>
+      case e: Throwable =>
         logger.warn("Exception while replacing current line with " + contents + " - " + e.getMessage, e)
     }
     currentLine.replace(0, currentLine.length, contents)

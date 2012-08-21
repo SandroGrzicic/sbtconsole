@@ -117,7 +117,7 @@ class SbtRunner extends Actor with HasLogger {
         }
       }
     } catch {
-      case e =>
+      case e: Throwable =>
         eclipseLog.error("Error launching SBT", e)
     }
   }
@@ -144,7 +144,7 @@ class SbtRunner extends Actor with HasLogger {
    */
   def stopSbt(stop: () => Unit, afterStopped: () => Unit) {
     
-    if (sbtProcessBusy || sbtProcess.isEmpty) return
+    if (sbtProcessBusy) return
     sbtProcessBusy = true
     
     sbtProcess match {
