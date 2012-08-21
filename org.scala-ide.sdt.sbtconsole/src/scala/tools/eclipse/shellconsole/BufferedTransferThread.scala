@@ -4,6 +4,7 @@ import java.io.InputStream
 import org.eclipse.ui.console.IOConsoleOutputStream
 import scala.annotation.tailrec
 import java.io.IOException
+import scala.tools.eclipse.logging.HasLogger
 
 /**
  * Transfers data from the input to the output;
@@ -25,7 +26,7 @@ class BufferedTransferThread(
     in: InputStream, 
     out: IOConsoleOutputStream, 
     charset: String = "UTF-8"
-) extends Thread {
+) extends Thread with HasLogger {
   import scala.sys.process.BasicIO
   import BufferedTransferThread._
 
@@ -53,30 +54,31 @@ class BufferedTransferThread(
   }
 
   override def run() {
-    val streamBuffer = new Array[Byte](BUFFER_SIZE)
-    var byteCount = 0
+    try {
+      // an IOException will be thrown once the process has terminated
+      transferLoop()
+    } catch {
+      case e: IOException =>
+    }
+  }
 
+  /** Starts the transfer loop. */
+  private def transferLoop() {
+    val streamBuffer = new Array[Byte](BUFFER_SIZE)
+    
     @tailrec def loop() {
-      byteCount = in.read(streamBuffer)
+      val byteCount = in.read(streamBuffer)
       if (byteCount > 0) {
         if (writeTarget == Output) {
-          // an exception will be thrown once the process has terminated
-          val outputStreamOpen = try {
-            out.write(streamBuffer, 0, byteCount)
-            out.flush()
-            true
-          } catch {
-            case _: IOException => false
-          }
-          if (outputStreamOpen) loop()
+          out.write(streamBuffer, 0, byteCount)
+          out.flush()
         } else {
           contentBuffer.append(new String(streamBuffer, 0, byteCount, charset))
-          loop()
         }
+        loop()
       }
     }
     loop()
-    out.close()
   }
 }
 
