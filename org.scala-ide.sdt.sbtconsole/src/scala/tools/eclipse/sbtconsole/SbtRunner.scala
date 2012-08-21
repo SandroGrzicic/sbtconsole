@@ -14,6 +14,7 @@ import java.io.Closeable
 import org.eclipse.jdt.launching.JavaRuntime
 import org.eclipse.jdt.core.IJavaProject
 import scala.tools.eclipse.shellconsole.ThreadUtils
+import java.io.InterruptedIOException
 
 object SbtRunner {
   sealed trait SbtRunnerMessage
@@ -76,10 +77,15 @@ class SbtRunner extends Actor with HasLogger {
     sbtConfiguration = config
     consoleStreams = streams
     
-    def uncloseableInputStream(in: InputStream) = new FilterInputStream(in) { override def close() {} }
+    // BasicIO.transferFully tries to close the InputStream when it's done
+    def toUncloseable(in: InputStream) = new FilterInputStream(in) { override def close() {} }
     
+    // create a new ProcessIO with an uncloseable InputStream that catches 
+    // all InterruptedIOExceptions which get thrown when the process terminates 
     val pio = new ProcessIO(
-      sbtIn  => BasicIO.transferFully(uncloseableInputStream(streams.in), sbtIn),
+      sbtIn  => try { 
+          BasicIO.transferFully(toUncloseable(streams.in), sbtIn) 
+        } catch { case _: InterruptedIOException => },
       sbtOut => BasicIO.transferFully(sbtOut, streams.out),
       sbtErr => BasicIO.transferFully(sbtErr, streams.out),
       false
@@ -168,5 +174,5 @@ class SbtRunner extends Actor with HasLogger {
     afterStopped()
   }
   
- 
+  
 }
