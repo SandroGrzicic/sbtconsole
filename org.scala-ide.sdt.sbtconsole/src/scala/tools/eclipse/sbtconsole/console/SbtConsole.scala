@@ -56,9 +56,11 @@ class SbtConsole(name: String, imgDescriptor: ImageDescriptor = null, onRestartF
 
   override def onTerminate() {
     onTerminateFunc()
+    page.setEditable(false)
   }
   
   override def onRestart() {
+    page.setEditable(true)
     onRestartFunc()
   }
 

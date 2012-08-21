@@ -29,8 +29,7 @@ class ShellConsolePage(console: ShellConsole, view: IConsoleView)
     super.createControl(parent)
     val control = getControl
     listener = new ShellConsoleKeyListener(console, ShellConsolePage.this)
-    control.addTraverseListener(listener)
-    control.addKeyListener(listener)
+    addListenerToControl()
   }
 
   override protected def createActions() {
@@ -46,12 +45,29 @@ class ShellConsolePage(console: ShellConsole, view: IConsoleView)
     super.configureToolBar(mgr)
   }
   
+  /** Whether this Page is editable. */
+  def setEditable(editable: Boolean) {
+    getViewer.setEditable(editable)
+    editable match {
+      case false => removeListenerFromControl()
+      case true  => addListenerToControl()
+    }
+  }
+  
+  private def addListenerToControl() {
+    getControl.addTraverseListener(listener)
+    getControl.addKeyListener(listener)
+  }
+  private def removeListenerFromControl() {
+    getControl.removeTraverseListener(listener)
+    getControl.removeKeyListener(listener)
+  }
+  
   override def dispose() {
     actions = null
 
     if (getControl != null) {
-      getControl.removeTraverseListener(listener)
-      getControl.removeKeyListener(listener)
+      removeListenerFromControl()
     }
     
     super.dispose()
