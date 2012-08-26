@@ -45,12 +45,16 @@ class ShellConsolePage(console: ShellConsole, view: IConsoleView)
     super.configureToolBar(mgr)
   }
   
-  /** Whether this Page is editable. */
+  /** Set whether this Page is user-editable. */
   def setEditable(editable: Boolean) {
-    getViewer.setEditable(editable)
     editable match {
-      case false => removeListenerFromControl()
-      case true  => addListenerToControl()
+      case false if getViewer.isEditable => 
+        removeListenerFromControl()
+        getViewer.setEditable(false)
+      case true if !getViewer.isEditable => 
+        addListenerToControl()
+        getViewer.setEditable(true)
+      case _ =>
     }
   }
   
