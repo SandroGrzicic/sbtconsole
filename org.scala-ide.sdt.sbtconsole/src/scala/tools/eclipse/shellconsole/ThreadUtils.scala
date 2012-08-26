@@ -12,16 +12,17 @@ object ThreadUtils {
     def run() { f }
   }
   implicit def function2runnable1(f: () => Unit) = new Runnable {
-    def run() { f }
+    def run() { f() }
   }
 
   /** Executor used with asyncExec. */
   lazy val executor = Executors.newSingleThreadScheduledExecutor() 
   
-  /** Run `f` on the UI thread after `after` milliseconds.  */
-  def asyncExec(after: Long)(f: => Unit) {
+  /** Run `f` after `after` milliseconds, on the UI thread (true by default) or not.  */
+  def asyncExec(after: Long, ui: Boolean = true)(f: => Unit) {
     executor.schedule({
-      Display.getDefault.asyncExec(f)
+      if (ui) Display.getDefault.asyncExec(f)
+      else f
     }, after, TimeUnit.MILLISECONDS)
   }
 

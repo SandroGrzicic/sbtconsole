@@ -13,7 +13,8 @@ import org.eclipse.jface.text.TextEvent
 import org.eclipse.jface.text.ITextListener
 import org.eclipse.jface.text.IRegion
 import org.eclipse.swt.SWTException
-import scala.sys.process.BasicIO
+import scala.tools.eclipse.util.SWTUtils
+import scala.collection.immutable.Queue
 
 /**
  * ShellConsole KeyListener.
@@ -28,7 +29,7 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
 
   /** The symbol which represents a new line in the process output. */
   var newlineSymbol = '\r'
-    
+
   /** Holds user input (history). */
   var history = IndexedSeq[String]()
   /** Current line (position) in history. */
@@ -39,10 +40,13 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
   private def getCurrentLineInfo: IRegion =
     document.getLineInformation(document.getNumberOfLines - 1)
 
-  private var transferThread = console.newProcessToConsoleTransferThread()
+  private val transferThread = console.newProcessToConsoleTransferThread()
 
   private lazy val document = page.getViewer.getDocument
   private lazy val textWidget = page.getViewer.getTextWidget
+
+  /** Amount of time to wait on SBT. */
+  private def getSbtDelay = 200
 
   /** Move the caret to the end of the console. */
   def moveCaretToEnd() {
@@ -60,17 +64,40 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
     }
   }
 
+  /** Whether we are waiting for SBT to finish; if so, don't process user input. */
+  @volatile private var waitingForSbt = false
+  /** Actions to process after we are finished waiting for SBT. */
+  @volatile private var pendingKeys = Queue[TraverseEvent]()
+
+  /** Simulates pending key presses. Clears the pending keys queue after it's done. */
+  def replayPendingActions() {
+    for (e <- pendingKeys)
+      keyTraversed(e)
+    pendingKeys = Queue[TraverseEvent]()
+  }
+
   def keyTraversed(e: TraverseEvent) {
 
     def disableDefaultAction(e: TraverseEvent) {
       e.detail = SWT.TRAVERSE_NONE
       e.doit = true
     }
+    
+    if (waitingForSbt) {
+      disableDefaultAction(e)
+      pendingKeys +:= e
+      return
+    }
 
     e.keyCode match {
       case SWT.TAB =>
         disableDefaultAction(e)
-        completeCurrentInput()
+        try {
+          completeCurrentInput()
+        } catch {
+          case e: Throwable =>
+            logger.warn("Exception while attempting autocomplete: e.getMessage", e)
+        }
 
       case SWT.ARROW_LEFT =>
         val lineInfo = getCurrentLineInfo
@@ -103,39 +130,41 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
     }
   }
 
+  
   /** Executes the command in the current line, adds it to history and clears the current line. */
   def executeCurrentCommand() {
-    
+
     val line = currentLine.mkString
 
     console.processWriter.write(line + "\n")
     console.processWriter.flush()
-    
+
     replaceCurrentLineWith("")
-    
+
     addLineToHistory(line)
-    
+
     currentLine.clear()
   }
 
   /** Autocompletes the current input. */
   def completeCurrentInput() {
+    waitingForSbt = true
+
     val lineInfo = getCurrentLineInfo
     val line = currentLine.mkString
 
-    try {
-      // start buffering process output
-      transferThread.writeTarget = BufferedTransferThread.Buffer
+    // start buffering process output
+    transferThread.writeTarget = BufferedTransferThread.Buffer
 
-      // send the current line to the process for autocompletion
-      console.processWriter.write(line + "\t")
-      console.processWriter.flush()
+    // send the current line to the process for autocompletion
+    console.processWriter.write(line + "\t")
+    console.processWriter.flush()
 
-      // wait for the process to print out the completion
-      // because it's not possible to find out the end of the completion
-      Thread.sleep(200)
+    // wait for the process to print out the completion
+    // because it's not possible to find out the end of the completion
+    ThreadUtils.asyncExec(getSbtDelay, ui = false) {
       // make sure we actually get some output from the process
-      ThreadUtils.sleepWhile(timeout = 1500, sleepSegments = 5) {
+      ThreadUtils.sleepWhile(timeout = 5 * getSbtDelay, sleepSegments = 5) {
         transferThread.contentBuffer.length == 0
       }
       if (transferThread.contentBuffer.length == 0) {
@@ -143,9 +172,9 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
         transferThread.writeTarget = BufferedTransferThread.Output
         return
       }
-      
+
       val contentBuffer = transferThread.contentBuffer.toString
-      
+
       if (contentBuffer.count(newlineSymbol ==) == 1) {
         // single completion - complete current line
         val completion = contentBuffer.dropWhile(newlineSymbol !=).drop(3)
@@ -154,14 +183,20 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
         val backspaces = Array.fill(completion.length)('\b')
         console.processWriter.write(backspaces)
         console.processWriter.flush()
-        replaceCurrentLineWith(completion)
-        
-        // clear content buffer and resume outputting process output to console
-        transferThread.contentBuffer.setLength(0)
-        transferThread.writeTarget = BufferedTransferThread.Output
-        
-        moveCaretToEnd()
-        
+
+        SWTUtils.asyncExec {
+          replaceCurrentLineWith(completion)
+
+          // clear content buffer and resume outputting process output to console
+          transferThread.contentBuffer.setLength(0)
+          transferThread.writeTarget = BufferedTransferThread.Output
+
+          moveCaretToEnd()
+          
+          waitingForSbt = false
+          replayPendingActions()
+        }
+
       } else {
         // multiple completions - transfer them to the console
 
@@ -169,25 +204,30 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
         val backspaces = Array.fill(line.length)('\b')
         console.processWriter.write(backspaces)
         console.processWriter.flush()
-        replaceCurrentLineWith("")
-        
-        // remove last line from output by using the copyToOutput limit
-        val contentBufferCopyLimit = contentBuffer.lastIndexOf(newlineSymbol) + 4
-        // copy the current content buffer to the console and clear it
-        transferThread.copyToOutput(contentBufferCopyLimit, clearBuffer = true)
-        // resume outputting process output to console
-        transferThread.writeTarget = BufferedTransferThread.Output
 
-        // wait until the console has been properly filled with the output
-        ThreadUtils.asyncExec(200) {
-          // set the current line to be the previously typed line
-          replaceCurrentLineWith(line)
-          moveCaretToEnd()
+        SWTUtils.asyncExec {
+          replaceCurrentLineWith("")
+
+          // remove last line from output by using the copyToOutput limit
+          val contentBufferCopyLimit = contentBuffer.lastIndexOf(newlineSymbol) + 4
+          // copy the current content buffer to the console and clear it
+          transferThread.copyToOutput(contentBufferCopyLimit, clearBuffer = true)
+          // resume outputting process output to console
+          transferThread.writeTarget = BufferedTransferThread.Output
+
+          // wait until the console has been properly filled with the output
+          ThreadUtils.asyncExec(getSbtDelay) {
+
+            // set the current line to be the previously typed line
+            replaceCurrentLineWith(line)
+            moveCaretToEnd()
+            
+            waitingForSbt = false
+            replayPendingActions()
+          }
         }
       }
-    } catch {
-      case e: Throwable =>
-        logger.warn("Exception while attempting autocomplete of " + line + ": e.getMessage", e)
+
     }
   }
 
