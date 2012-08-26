@@ -96,6 +96,7 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
           completeCurrentInput()
         } catch {
           case e: Throwable =>
+            waitingForSbt = false
             logger.warn("Exception while attempting autocomplete: e.getMessage", e)
         }
 
