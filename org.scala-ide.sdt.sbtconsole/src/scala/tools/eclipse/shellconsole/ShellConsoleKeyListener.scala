@@ -171,6 +171,7 @@ class ShellConsoleKeyListener(console: ShellConsole, page: ShellConsolePage)
       if (transferThread.contentBuffer.length == 0) {
         eclipseLog.warn("SBT Console: SBT took a very long time to autocomplete input; please try again.")
         transferThread.writeTarget = BufferedTransferThread.Output
+        waitingForSbt = false
         return
       }
 
