@@ -71,7 +71,11 @@ class ShellConsolePage(console: ShellConsole, view: IConsoleView)
     actions = null
 
     if (getControl != null) {
-      removeListenerFromControl()
+      try {
+        removeListenerFromControl()
+      } catch {
+        case _: Throwable => // ignored
+      }
     }
     
     super.dispose()
