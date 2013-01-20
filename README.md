@@ -5,7 +5,7 @@ Adds a SBT Console inside the ScalaIDE for Eclipse.
 
 A SBT Console can be launched using the Scala menu and choosing Show/hide SBT Console (default key shortcut: all three modifier keys + s).
 
-The project is still in heavy development, so feel free to [submit tickets](https://github.com/SandroGrzicic/sbtconsole/issues/new) with bug reports and feature requests.
+If you have any problems or questions with usage, feel free to [submit tickets](https://github.com/SandroGrzicic/sbtconsole/issues/new) with questions, bug reports or feature requests.
 
 Useful information can be found on the [project wiki](https://github.com/SandroGrzicic/sbtconsole/wiki).
 
