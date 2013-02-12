@@ -2,7 +2,7 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Scala SBT Console Plugin
 Bundle-SymbolicName: org.scala-ide.sdt.sbtconsole;singleton:=true
-Bundle-Version: 0.1.0.qualifier
+Bundle-Version: 0.2.0.qualifier
 Bundle-Vendor: scala-ide.org
 Bundle-ActivationPolicy: lazy
 Bundle-Localization: plugin
@@ -43,7 +43,7 @@ Require-Bundle:
  scalariform,
  org.junit4;bundle-version="4.5.0",
  org.eclipse.ui.browser;bundle-version="3.3.0",
- org.scala-ide.sdt.core;bundle-version="[2.1.0,2.2.0)",
+ org.scala-ide.sdt.core,
  org.scala-ide.scala.library
 Import-Package: 
  com.ibm.icu.text;apply-aspects:=false;org.eclipse.swt.graphics;apply-aspects:=false,
