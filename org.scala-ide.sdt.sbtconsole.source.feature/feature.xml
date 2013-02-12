@@ -2,7 +2,7 @@
 <feature
   id="org.scala-ide.sdt.sbtconsole.source.feature"
   label="SBT Console sources"
-  version="0.1.0.qualifier"
+  version="0.2.0.qualifier"
   provider-name="example.org">
 
   <description>

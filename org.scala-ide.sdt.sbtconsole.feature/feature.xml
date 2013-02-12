@@ -2,7 +2,7 @@
 <feature
       id="org.scala-ide.sdt.sbtconsole.feature"
       label="SBT Console"
-      version="0.1.0.qualifier"
+      version="0.2.0.qualifier"
       provider-name="org.scala-ide.sdt"
       plugin="org.scala-ide.sdt.sbtconsole">
 
