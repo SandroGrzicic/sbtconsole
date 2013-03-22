@@ -47,6 +47,7 @@ class ShellConsolePage(console: ShellConsole, view: IConsoleView)
   
   /** Set whether this Page is user-editable. */
   def setEditable(editable: Boolean) {
+    if (getViewer == null) return
     editable match {
       case false if getViewer.isEditable => 
         removeListenerFromControl()
