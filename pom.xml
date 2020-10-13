@@ -48,7 +48,7 @@
     <scala.version.short>2.9</scala.version.short>
     <version.tag>local</version.tag>
     <repo.scala-ide>${repo.scala-ide.root}/nightly-update-master-29x</repo.scala-ide>
-    <junit.version>4.10</junit.version>
+    <junit.version>4.13.1</junit.version>
    </properties>
 
   <profiles>
